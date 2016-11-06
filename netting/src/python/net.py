@@ -34,8 +34,8 @@ def init():
 def exchange(ccy, amount):
     if PRICES.has_key("USD"+ccy):
         bid, ask = PRICES.get("USD"+ccy)
-        if (amount>0): return -1 * amount / ask
-        else: return -1 * amount / bid
+        if (amount>0): return -1 * amount / bid
+        else: return -1 * amount / ask
     elif PRICES.has_key(ccy+"USD"):
         bid, ask = PRICES.get(ccy+"USD")
         if (amount>0): return -1 * amount * ask
