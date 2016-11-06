@@ -5,14 +5,14 @@ CURRENCIES = ['AUD','CAD','CHF','CNH','EUR','GBP','HKD','JPY','NZD']
 
 PRICES = {
     'AUDUSD':(0.76689, 0.76705),
-    'EURUSD':(1.11184,1.11193),
-    'GBPUSD':(1.23465,1.23485),
-    'NZDUSD':(0.73064,0.73084),
     'USDCAD':(1.33698,1.33713),
     'USDCHF':(0.97076,0.97096),
     'USDCNH':(6.76904,6.76954),
+    'EURUSD':(1.11184,1.11193),
+    'GBPUSD':(1.23465,1.23485),
     'USDHKD':(7.75517,7.75538),
-    'USDJPY':(102.61,102.62)
+    'USDJPY':(102.61,102.62),
+    'NZDUSD':(0.73064,0.73084)
 }
 
 def init():
@@ -21,18 +21,25 @@ def init():
         target[ccy]={}
         for acct in ACCOUNTS:
             r = random.randint(-5,5)
-            if (r > 2): target[ccy][acct]= 1000000*random.randint(1,25)
-            elif (r < -2): target[ccy][acct]= -1000000*random.randint(1,25)
+            if (r > 2):
+                #buy the currency
+                ccy_amount = 1000000*random.randint(1,10)
+                target[ccy][acct]= (ccy_amount,0)
+            elif (r < -2):
+                #sell the currency
+                ccy_amount = -11000000*random.randint(1,10)
+                target[ccy][acct]= (ccy_amount,0)
     return target
 
 def getHeader():
-    header = "| %-12s " % "CCY"
-    for act in ACCOUNTS: header += "| %-12s" % act
+    header = "| %-8s" % "CCY"
+    for act in ACCOUNTS: header = header + "| %-10s" % act + "  %+6s    " % "(USD)"
     return header+"|"
 
 def getRow(ccy, entries):
-    row = "| %-12s " % ccy
-    for act in ACCOUNTS: row += "| %+12s" % entries.get(act, 0)
+    row = "| %-8s" % ccy
+    for act in ACCOUNTS:
+        row = row + "| %+10s" % entries.get(act, (0,0))[0] + "| %+10s" % entries.get(act, (0,0))[1]
     return row+"|"
 
 def printTarget():
