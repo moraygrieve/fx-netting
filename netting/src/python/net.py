@@ -22,11 +22,9 @@ def init():
         for acct in ACCOUNTS:
             r = random.randint(-5,5)
             if (r > 2):
-                #buy the currency
                 ccy_amount = 1000000*random.randint(1,10)
                 target[ccy][acct]= (ccy_amount,exchange(ccy, ccy_amount))
             elif (r < -2):
-                #sell the currency
                 ccy_amount = -1000000*random.randint(1,10)
                 target[ccy][acct]= (ccy_amount,exchange(ccy, ccy_amount))
     return target
@@ -54,8 +52,7 @@ def getRow(ccy, entries):
 
 def formatRowEntry(value):
     if (value == 0): return "%12s"%"0"
-    return "%12.2d"%value
-
+    return ("%12.5d"%value)
 
 def printTarget():
     header = getHeader()
@@ -65,6 +62,20 @@ def printTarget():
     for ccy in CURRENCIES: print getRow(ccy, target[ccy])
     print "-"*len(header)
 
+def printOrders():
+    for ccy in CURRENCIES:
+        for act in ACCOUNTS:
+            amount = target[ccy].get(act,(0,0))
+            if PRICES.has_key("USD"+ccy):
+                bid, ask = PRICES.get("USD"+ccy)
+                if (amount[0] > 0): print "SELL USD%s %f @ %f" % (ccy, amount[1], bid)
+                elif (amount[0] < 0): print "BUY  USD%s %f @ %f" % (ccy, amount[1], ask)
+            elif PRICES.has_key(ccy+"USD"):
+                bid, ask = PRICES.get(ccy+"USD")
+                if (amount[0]>0): print "BUY  %sUSD %f @ %f" % (ccy, amount[0], ask)
+                elif (amount[0]<0): print "SELL %sUSD %f @ %f" % (ccy, amount[0], bid)
+
 if __name__ == "__main__":
     target = init()
     printTarget()
+    printOrders()
