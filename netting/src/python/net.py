@@ -24,23 +24,38 @@ def init():
             if (r > 2):
                 #buy the currency
                 ccy_amount = 1000000*random.randint(1,10)
-                target[ccy][acct]= (ccy_amount,0)
+                target[ccy][acct]= (ccy_amount,exchange(ccy, ccy_amount))
             elif (r < -2):
                 #sell the currency
-                ccy_amount = -11000000*random.randint(1,10)
-                target[ccy][acct]= (ccy_amount,0)
+                ccy_amount = -1000000*random.randint(1,10)
+                target[ccy][acct]= (ccy_amount,exchange(ccy, ccy_amount))
     return target
+
+def exchange(ccy, amount):
+    if PRICES.has_key("USD"+ccy):
+        bid, ask = PRICES.get("USD"+ccy)
+        if (amount>0): return -1 * amount / ask
+        else: return -1 * amount / bid
+    elif PRICES.has_key(ccy+"USD"):
+        bid, ask = PRICES.get(ccy+"USD")
+        if (amount>0): return -1 * amount * ask
+        else: return -1 * amount * bid
 
 def getHeader():
     header = "| %-8s" % "CCY"
-    for act in ACCOUNTS: header = header + "| %-10s" % act + "  %+6s    " % "(USD)"
+    for act in ACCOUNTS: header = header + "| %-12s" % act + "  %+8s    " % "(USD)"
     return header+"|"
 
 def getRow(ccy, entries):
     row = "| %-8s" % ccy
     for act in ACCOUNTS:
-        row = row + "| %+10s" % entries.get(act, (0,0))[0] + "| %+10s" % entries.get(act, (0,0))[1]
+        row = row + "| %s" % formatRowEntry(entries.get(act, (0,0))[0]) + "| %s" % formatRowEntry(entries.get(act, (0,0))[1])
     return row+"|"
+
+def formatRowEntry(value):
+    if (value == 0): return "%12s"%"0"
+    return "%12.2d"%value
+
 
 def printTarget():
     header = getHeader()
