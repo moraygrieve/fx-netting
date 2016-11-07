@@ -1,4 +1,6 @@
-import random, math
+import random, math, copy
+
+random.seed(2)
 
 #constants for the run
 ACCOUNTS = ['Account A','Account B','Account C','Account D']
@@ -44,8 +46,8 @@ class FXOrder:
         self.dealtAmount += order.dealtAmount
 
     def __str__(self):
-        fstring = "[%s] %s  %s%s  %12.2f @ %-10.5f (%-10d dealt %s)"
-        if self.dealtCurrency == 'JPY': fstring = "[%s] %s  %s%s  %12.2f @ %-10.2f (%-10d dealt %s)"
+        fstring = "[%-10s] %s  %s%s  %12.2f @ %-10.5f (%-10d dealt %s)"
+        if self.dealtCurrency == 'JPY': fstring = "[%-10s] %s  %s%s  %12.2f @ %-10.2f (%-10d dealt %s)"
         return fstring % \
                (self.account, self.side, self.base, self.term, self.baseAmount, self.price, self.dealtAmount, self.dealtCurrency)
 
@@ -132,6 +134,13 @@ def convertToUSD(ccy, amount):
         if (amount>0): return -1 * amount * ask
         else: return -1 * amount * bid
 
+def printPrices():
+    for ccypair in PRICES:
+        if ccypair == "USDJPY":
+            print "%s: %8.2f  %-8.2f" % (ccypair,PRICES[ccypair][0],PRICES[ccypair][1])
+        else:
+            print "%s: %8.5f  %-8.5f" % (ccypair,PRICES[ccypair][0],PRICES[ccypair][1])
+    print
 
 def getHeader():
     header = "| %-5s" % "CCY"
@@ -161,13 +170,13 @@ def printTarget(target):
 
 
 def printOrders(orders):
+        print ""
         for act in ACCOUNTS:
             if not orders.has_key(act): continue
             for ccy in CURRENCIES:
                 ccypair = ccy+"USD" if isCcyBase(ccy) else "USD"+ccy
                 if not orders[act].has_key(ccypair): continue
                 print orders[act][ccypair]
-            print ""
 
 
 def getTotals(orders):
@@ -203,16 +212,51 @@ def getTotals(orders):
                 if order.isBuy():netted[ccypair][0].include(order)
                 else: netted[ccypair][1].include(order)
 
+    print ""
+    totalSaved = 0
     for ccy in CURRENCIES:
         ccypair = ccy+"USD" if isCcyBase(ccy) else "USD"+ccy
+        bid, ask = PRICES.get(ccypair)
         if netted.has_key(ccypair):
+            #net out the dealt amount
+            buyAmount = netted[ccypair][0].dealtAmount
+            sellAmount = netted[ccypair][1].dealtAmount
+
+            if (buyAmount >= sellAmount):
+                order = copy.deepcopy(netted[ccypair][0])
+                dealtSaved = netted[ccypair][1].dealtAmount
+                if isCcyBase(ccy):
+                    saving = dealtSaved*ask - dealtSaved*bid
+                else:
+                    saving = dealtSaved/bid - dealtSaved/ask
+                order.baseAmount -= netted[ccypair][1].baseAmount
+                order.termAmount -= netted[ccypair][1].termAmount
+                order.dealtAmount -= netted[ccypair][1].dealtAmount
+            else:
+                order = copy.deepcopy(netted[ccypair][1])
+                dealtSaved = netted[ccypair][0].dealtAmount
+                if isCcyBase(ccy):
+                    saving = dealtSaved*ask - dealtSaved*bid
+                else:
+                    saving = dealtSaved/bid - dealtSaved/ask
+                order.baseAmount -= netted[ccypair][0].baseAmount
+                order.termAmount -= netted[ccypair][0].termAmount
+                order.dealtAmount -= netted[ccypair][0].dealtAmount
+
+            totalSaved += saving
             print netted[ccypair][0]
             print netted[ccypair][1]
 
+            if (order.baseAmount > 0):
+                fstring = "%s - saving %.2f USD"
+                print fstring % (order.__str__(), saving)
+
+    print "\nTotal USD amount saved across the accounts %.2f" % totalSaved
 
 #the entry point
 if __name__ == "__main__":
     target, orders = initAccounts()
+    printPrices()
     printTarget(target)
     printOrders(orders)
     totals = getTotals(orders)
