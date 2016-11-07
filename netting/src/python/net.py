@@ -31,7 +31,10 @@ class FXOrder:
         self.dealtAmount = None
 
     def __str__(self):
-        return "[%s] %s  %s%s  %12.2f @ %-12.5f" % (self.account, self.side, self.base, self.term, self.baseAmount, self.price)
+        fstring = "[%s] %s  %s%s  %12.2f @ %-10.5f (%-10d dealt on %s)"
+        if self.dealtCurrency == 'JPY': fstring = "[%s] %s  %s%s  %12.2f @ %-10.2f (%-10d dealt on %s)"
+        return fstring % \
+               (self.account, self.side, self.base, self.term, self.baseAmount, self.price, self.dealtAmount, self.dealtCurrency)
 
 def initAccounts():
     """Populate the target positions randomly.
@@ -48,13 +51,14 @@ def initAccounts():
                 ccy_amount = convertFromUSDMid(ccy, -1000000*random.randint(1,10))
             else:
                 continue
+            if ccy_amount == 0: continue
             usd_amount = convertToUSD(ccy, ccy_amount)
             target[ccy][acct]= (ccy_amount, usd_amount)
 
             order = FXOrder()
             order.account = acct
             order.dealtCurrency = ccy
-            order.dealtAmount = ccy_amount
+            order.dealtAmount = math.fabs(ccy_amount)
             if isCcyBase(ccy):
                 order.base = ccy
                 order.term = "USD"
@@ -65,8 +69,8 @@ def initAccounts():
                 else:
                     order.price = bid
                     order.side = "SELL"
-                order.baseAmount = ccy_amount
-                order.termAmount = usd_amount
+                order.baseAmount = math.fabs(ccy_amount)
+                order.termAmount = math.fabs(usd_amount)
             else:
                 order.base = "USD"
                 order.term = ccy
@@ -77,8 +81,8 @@ def initAccounts():
                 else:
                     order.price = ask
                     order.side = "BUY "
-                order.baseAmount = usd_amount
-                order.termAmount = ccy_amount
+                order.baseAmount = math.fabs(usd_amount)
+                order.termAmount = math.fabs(ccy_amount)
             if not orders.has_key(acct): orders[acct]={}
             orders[acct][order.base+order.term]=order
             print order
