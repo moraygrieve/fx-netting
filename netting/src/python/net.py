@@ -1,4 +1,4 @@
-import random, math, copy
+import random, math, copy, numpy
 
 random.seed(24)
 
@@ -180,6 +180,7 @@ def printOrders(orders):
 
 def getTotals(orders):
     netted = {} #map<currency, (BUY, SELL)>
+    netOrders = []
     for ccy in CURRENCIES:
         ccypair = ccy+"USD" if isCcyBase(ccy) else "USD"+ccy
         for act in ACCOUNTS:
@@ -263,24 +264,36 @@ def getTotals(orders):
                     saving = dealtSaved/bid - dealtSaved/ask
 
             totalSaved += saving
+
             #print netted[ccypair][0]
             #print netted[ccypair][1]
             if (order.baseAmount > 0):
+                netOrders.append(order)
                 fstring = "%s - saving %.2f USD"
                 print fstring % (order.__str__(), saving)
-
     print "\nTotal USD amount saved across the accounts %.2f" % totalSaved
-    return totalSaved
+    return totalSaved, netOrders
 
 #the entry point
 if __name__ == "__main__":
     total = 0
     count = 0
+    totals = []
     for i in range(0,1):
-        target, orders = initAccounts()
+        target, rawOrders = initAccounts()
         printPrices()
         printTarget(target)
-        printOrders(orders)
-        total += getTotals(orders)
+        printOrders(rawOrders)
+        saved, netOrders = getTotals(rawOrders)
+
+        total += saved
         count += 1
+        totals.append(saved)
     print "Average = %f" % (total /count)
+
+    #totals.sort()
+    #hist, bin_edges = numpy.histogram(totals, 100)
+    #for i in range(0, len(hist)):
+    #    print int(bin_edges[i]), hist[i]
+
+    #print totals
