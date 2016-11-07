@@ -20,19 +20,32 @@ ORDERS = {}
 #data structures
 class FXOrder:
     def __init__(self):
-        self.account = None
-        self.base = None
-        self.term = None
-        self.side = None
-        self.price = None
-        self.baseAmount = None
-        self.termAmount = None
-        self.dealtCurrency = None
-        self.dealtAmount = None
+        self.account = ""
+        self.base = ""
+        self.term = ""
+        self.side = ""
+        self.price = 0.0
+        self.baseAmount = 0
+        self.termAmount = 0
+        self.dealtCurrency = ""
+        self.dealtAmount = 0
+
+    def isBuy(self):
+        return self.side == "BUY "
+
+    def include(self, order):
+        self.base = order.base
+        self.term = order.term
+        self.side = order.side
+        self.price = order.price
+        self.baseAmount += order.baseAmount
+        self.termAmount += order.termAmount
+        self.dealtCurrency = order.dealtCurrency
+        self.dealtAmount += order.dealtAmount
 
     def __str__(self):
-        fstring = "[%s] %s  %s%s  %12.2f @ %-10.5f (%-10d dealt on %s)"
-        if self.dealtCurrency == 'JPY': fstring = "[%s] %s  %s%s  %12.2f @ %-10.2f (%-10d dealt on %s)"
+        fstring = "[%s] %s  %s%s  %12.2f @ %-10.5f (%-10d dealt %s)"
+        if self.dealtCurrency == 'JPY': fstring = "[%s] %s  %s%s  %12.2f @ %-10.2f (%-10d dealt %s)"
         return fstring % \
                (self.account, self.side, self.base, self.term, self.baseAmount, self.price, self.dealtAmount, self.dealtCurrency)
 
@@ -45,12 +58,9 @@ def initAccounts():
         target[ccy]={}
         for acct in ACCOUNTS:
             r = random.randint(-5,5)
-            if (r > 2):
-                ccy_amount = convertFromUSDMid(ccy, 1000000*random.randint(1,10))
-            elif (r < -2):
-                ccy_amount = convertFromUSDMid(ccy, -1000000*random.randint(1,10))
-            else:
-                continue
+            if (r > 2): ccy_amount = convertFromUSDMid(ccy, 1000000*random.randint(1,10))
+            elif (r < -2): ccy_amount = convertFromUSDMid(ccy, -1000000*random.randint(1,10))
+            else: continue
             if ccy_amount == 0: continue
             usd_amount = convertToUSD(ccy, ccy_amount)
             target[ccy][acct]= (ccy_amount, usd_amount)
@@ -88,6 +98,8 @@ def initAccounts():
     return target, orders
 
 def isCcyBase(ccy):
+    """Return true if this currency is base in conventional notation
+    """
     if PRICES.has_key("USD"+ccy): return False
     return True
 
@@ -158,8 +170,49 @@ def printOrders(orders):
             print ""
 
 
+def getTotals(orders):
+    netted = {} #map<currency, (BUY, SELL)>
+    for ccy in CURRENCIES:
+        ccypair = ccy+"USD" if isCcyBase(ccy) else "USD"+ccy
+        for act in ACCOUNTS:
+            if orders.has_key(act) and orders[act].has_key(ccypair):
+                if not netted.has_key(ccypair):
+                    buy = FXOrder()
+                    buy.account = "Netted"
+                    buy.side = "BUY "
+                    buy.dealtCurrency = ccy
+
+                    sell = FXOrder()
+                    sell.account = "Netted"
+                    sell.side = "SELL"
+                    sell.dealtCurrency = ccy
+
+                    if isCcyBase(ccy):
+                        buy.base = ccy
+                        buy.term = "USD"
+                        sell.base = ccy
+                        sell.term = "USD"
+                    else:
+                        buy.base = "USD"
+                        buy.term = ccy
+                        sell.base = "USD"
+                        sell.term = ccy
+                    netted[ccypair] = (buy, sell)
+
+                order = orders[act][ccypair]
+                if order.isBuy():netted[ccypair][0].include(order)
+                else: netted[ccypair][1].include(order)
+
+    for ccy in CURRENCIES:
+        ccypair = ccy+"USD" if isCcyBase(ccy) else "USD"+ccy
+        if netted.has_key(ccypair):
+            print netted[ccypair][0]
+            print netted[ccypair][1]
+
+
 #the entry point
 if __name__ == "__main__":
     target, orders = initAccounts()
     printTarget(target)
     printOrders(orders)
+    totals = getTotals(orders)
