@@ -148,8 +148,10 @@ def printTarget(target):
 def printOrders(orders):
         for act in ACCOUNTS:
             if not orders.has_key(act): continue
-            for ccy in orders[act]:
-                print orders[act][ccy]
+            for ccy in CURRENCIES:
+                ccypair = ccy+"USD" if isCcyBase(ccy) else "USD"+ccy
+                if not orders[act].has_key(ccypair): continue
+                print orders[act][ccypair]
             print ""
 
 
