@@ -85,7 +85,6 @@ def initAccounts():
                 order.termAmount = math.fabs(ccy_amount)
             if not orders.has_key(acct): orders[acct]={}
             orders[acct][order.base+order.term]=order
-            print order
     return target, orders
 
 def isCcyBase(ccy):
