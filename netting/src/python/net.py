@@ -19,31 +19,74 @@ ORDERS = {}
 
 #data structures
 class FXOrder:
-    def __init__(self, base, terms, side, price, dealtAmount, dealtCurrency):
-        self.base = base
-        self.terms = terms
-        self.side = side
-        self.price = price
-        self.dealtAmount = dealtAmount
-        self.dealtCurrency = dealtCurrency
+    def __init__(self):
+        self.account = None
+        self.base = None
+        self.term = None
+        self.side = None
+        self.price = None
+        self.baseAmount = None
+        self.termAmount = None
+        self.dealtCurrency = None
+        self.dealtAmount = None
 
+    def __str__(self):
+        return "[%s] %s  %s%s  %12.2f @ %-12.5f" % (self.account, self.side, self.base, self.term, self.baseAmount, self.price)
 
-def init():
+def initAccounts():
     """Populate the target positions randomly.
     """
-    target = {}
+    target = {}  #map< currency, map<account, (ccy, usd)> >
+    orders = {}  #map< account, map<currency, order> >
     for ccy in CURRENCIES:
         target[ccy]={}
         for acct in ACCOUNTS:
             r = random.randint(-5,5)
             if (r > 2):
                 ccy_amount = convertFromUSDMid(ccy, 1000000*random.randint(1,10))
-                target[ccy][acct]= (ccy_amount,convertToUSD(ccy, ccy_amount))
             elif (r < -2):
                 ccy_amount = convertFromUSDMid(ccy, -1000000*random.randint(1,10))
-                target[ccy][acct]= (ccy_amount,convertToUSD(ccy, ccy_amount))
-    return target
+            else:
+                continue
+            usd_amount = convertToUSD(ccy, ccy_amount)
+            target[ccy][acct]= (ccy_amount, usd_amount)
 
+            order = FXOrder()
+            order.account = acct
+            order.dealtCurrency = ccy
+            order.dealtAmount = ccy_amount
+            if isCcyBase(ccy):
+                order.base = ccy
+                order.term = "USD"
+                bid, ask = PRICES.get(ccy+"USD", (0,0))
+                if ccy_amount > 0:
+                    order.price = ask
+                    order.side = "BUY "
+                else:
+                    order.price = bid
+                    order.side = "SELL"
+                order.baseAmount = ccy_amount
+                order.termAmount = usd_amount
+            else:
+                order.base = "USD"
+                order.term = ccy
+                bid, ask = PRICES.get("USD"+ccy, (0,0))
+                if ccy_amount > 0:
+                    order.price = bid
+                    order.side = "SELL"
+                else:
+                    order.price = ask
+                    order.side = "BUY "
+                order.baseAmount = usd_amount
+                order.termAmount = ccy_amount
+            if not orders.has_key(acct): orders[acct]={}
+            orders[acct][order.base+order.term]=order
+            print order
+    return target, orders
+
+def isCcyBase(ccy):
+    if PRICES.has_key("USD"+ccy): return False
+    return True
 
 def roundup(amount):
     """Roundup to the nearest million.
@@ -93,7 +136,7 @@ def formatRowEntry(value):
     return ("%12d"%value)
 
 
-def printTarget():
+def printTarget(target):
     header = getHeader()
     print "-"*len(header)
     print header
@@ -102,22 +145,16 @@ def printTarget():
     print "-"*len(header)
 
 
-def printOrders():
-    for ccy in CURRENCIES:
+def printOrders(orders):
         for act in ACCOUNTS:
-            amount = target[ccy].get(act,(0,0))
-            if PRICES.has_key("USD"+ccy):
-                bid, ask = PRICES.get("USD"+ccy)
-                if (amount[0] > 0): print "SELL USD%s %f @ %f" % (ccy, amount[1], bid)
-                elif (amount[0] < 0): print "BUY  USD%s %f @ %f" % (ccy, amount[1], ask)
-            elif PRICES.has_key(ccy+"USD"):
-                bid, ask = PRICES.get(ccy+"USD")
-                if (amount[0]>0): print "BUY  %sUSD %f @ %f" % (ccy, amount[0], ask)
-                elif (amount[0]<0): print "SELL %sUSD %f @ %f" % (ccy, amount[0], bid)
+            if not orders.has_key(act): continue
+            for ccy in orders[act]:
+                print orders[act][ccy]
+            print ""
 
 
 #the entry point
 if __name__ == "__main__":
-    target = init()
-    printTarget()
-    printOrders()
+    target, orders = initAccounts()
+    printTarget(target)
+    printOrders(orders)
