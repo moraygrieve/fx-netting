@@ -78,7 +78,7 @@ def initAccounts():
             order.dealtCurrency = ccy
             order.dealtAmount = math.fabs(ccy_amount)
 
-            if isCcyBase(ccy):
+            if ccy == base:
                 if ccy_amount > 0:
                     order.price = ask
                     order.side = "BUY "
@@ -99,12 +99,6 @@ def initAccounts():
             if not orders.has_key(acct): orders[acct]={}
             orders[acct][order.base+order.term]=order
     return target, orders
-
-def isCcyBase(ccy):
-    """Return true if this currency is base in conventional notation
-    """
-    if PRICES.has_key("USD"+ccy): return False
-    return True
 
 def roundup(amount):
     """Roundup to the nearest million.
@@ -175,7 +169,7 @@ def printOrders(orders):
         for act,denom in ACCOUNTS:
             if not orders.has_key(act): continue
             for ccy in CURRENCIES:
-                ccypair = ccy+"USD" if isCcyBase(ccy) else "USD"+ccy
+                ccypair,base,term = marketConvention(ccy,denom)
                 if not orders[act].has_key(ccypair): continue
                 print orders[act][ccypair]
 
@@ -231,7 +225,7 @@ def getTotals(orders):
                 order.dealtAmount = netted[ccypair][0].dealtAmount - netted[ccypair][1].dealtAmount
 
                 dealtSaved = netted[ccypair][1].dealtAmount
-                if isCcyBase(ccy):
+                if ccy == base:
                     order.baseAmount = order.dealtAmount
                     order.termAmount = order.dealtAmount * order.price
                     saving = dealtSaved*ask - dealtSaved*bid
@@ -246,7 +240,7 @@ def getTotals(orders):
                 order.dealtAmount = netted[ccypair][1].dealtAmount - netted[ccypair][0].dealtAmount
 
                 dealtSaved = netted[ccypair][0].dealtAmount
-                if isCcyBase(ccy):
+                if ccy == base:
                     order.baseAmount = order.dealtAmount
                     order.termAmount = order.dealtAmount * order.price
                     saving = dealtSaved*ask - dealtSaved*bid
