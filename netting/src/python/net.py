@@ -2,17 +2,18 @@ import random, math
 from convention import marketConvention
 from orders import FXOrder, AccountOrders
 from prices import getPrice, printPrices
+from accounts import Accounts
 
 random.seed(24)
 ACCOUNTS = [('Account A','USD'),('Account B','USD'),('Account C','USD'),('Account D','USD')]
 CURRENCIES = ['AUD','CAD','CHF','CNH','EUR','GBP','HKD','JPY','NZD','PLN']
 
 def initAccounts():
-    target = {}
+    accounts = Accounts(CURRENCIES)
     orders = AccountOrders()
-    for ccy in CURRENCIES:
-        target[ccy]={}
+    for acct,denom in ACCOUNTS:  accounts.addAccount(acct,denom)
 
+    for ccy in CURRENCIES:
         for acct,denom in ACCOUNTS:
             r = random.randint(-5,5)
             if (r > 2): ccy_amount = convertFromDenomMid(ccy, denom, 1000000*random.randint(1,10))
@@ -20,9 +21,9 @@ def initAccounts():
             else: continue
             if ccy_amount == 0: continue
             contra_amount = convertToDenom(ccy, denom, ccy_amount)
-            target[ccy][acct]= (ccy_amount, contra_amount)
+            accounts.addAccountTarget(acct, ccy, ccy_amount, contra_amount)
             orders.addToAccount(acct, denom, ccy, ccy_amount, contra_amount)
-    return target, orders
+    return accounts, orders
 
 def roundup(amount):
     return int(math.ceil(amount/1000000.0)) * 1000000
@@ -44,29 +45,6 @@ def convertToDenom(ccy, denom, amount):
     elif ccy == base:
         if (amount>0): return -1 * amount * ask
         else: return -1 * amount * bid
-
-def getHeader():
-    header = "| %-5s" % "CCY"
-    for act,denom in ACCOUNTS: header = header + "| %-12s" % act
-    return header+"|"
-
-def getRow(ccy, entries):
-    row = "| %-5s" % ccy
-    for act,denom in ACCOUNTS:
-        row = row + "| %s" % formatRowEntry(entries.get(act, (0,0))[0])
-    return row+"|"
-
-def formatRowEntry(value):
-    if (value == 0): return "%12s"%"0"
-    return ("%12d"%value)
-
-def printTarget(target):
-    header = getHeader()
-    print "-"*len(header)
-    print header
-    print "-"*len(header)
-    for ccy in CURRENCIES: print getRow(ccy, target[ccy])
-    print "-"*len(header)
 
 def printOrders(orders):
         print ""
@@ -167,9 +145,9 @@ if __name__ == "__main__":
     count = 0
     totals = []
     for i in range(0,1):
-        target, rawOrders = initAccounts()
+        accounts, rawOrders = initAccounts()
         printPrices()
-        printTarget(target)
+        accounts.printTarget()
         printOrders(rawOrders.orders)
         saved, netOrders = getTotals(rawOrders.orders)
 
