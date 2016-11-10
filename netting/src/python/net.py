@@ -184,30 +184,25 @@ def getTotals(orders):
     netted = {} #map<currency, (BUY, SELL)>
     netOrders = []
     for ccy in CURRENCIES:
-        ccypair = ccy+"USD" if isCcyBase(ccy) else "USD"+ccy
+
         for act,denom in ACCOUNTS:
+            ccypair,base,term = marketConvention(ccy,denom)
+
             if orders.has_key(act) and orders[act].has_key(ccypair):
                 if not netted.has_key(ccypair):
                     buy = FXOrder()
                     buy.account = "Netted"
+                    buy.base = base
+                    buy.term = term
                     buy.side = "BUY "
                     buy.dealtCurrency = ccy
 
                     sell = FXOrder()
                     sell.account = "Netted"
+                    sell.base = base
+                    sell.term = term
                     sell.side = "SELL"
                     sell.dealtCurrency = ccy
-
-                    if isCcyBase(ccy):
-                        buy.base = ccy
-                        buy.term = "USD"
-                        sell.base = ccy
-                        sell.term = "USD"
-                    else:
-                        buy.base = "USD"
-                        buy.term = ccy
-                        sell.base = "USD"
-                        sell.term = ccy
                     netted[ccypair] = (buy, sell)
 
                 order = orders[act][ccypair]
@@ -217,14 +212,17 @@ def getTotals(orders):
     print ""
     totalSaved = 0
     for ccy in CURRENCIES:
-        ccypair = ccy+"USD" if isCcyBase(ccy) else "USD"+ccy
+        ccypair,base,term = marketConvention(ccy,denom)
         bid, ask = PRICES.get(ccypair)
+
         if netted.has_key(ccypair):
             #net out the dealt amount
             buyAmount = netted[ccypair][0].dealtAmount
             sellAmount = netted[ccypair][1].dealtAmount
             order = FXOrder()
             order.account = "Netted"
+            order.base = base
+            order.term = term
             order.dealtCurrency = ccy
 
             if (buyAmount >= sellAmount):
@@ -234,14 +232,10 @@ def getTotals(orders):
 
                 dealtSaved = netted[ccypair][1].dealtAmount
                 if isCcyBase(ccy):
-                    order.base = ccy
-                    order.term = "USD"
                     order.baseAmount = order.dealtAmount
                     order.termAmount = order.dealtAmount * order.price
                     saving = dealtSaved*ask - dealtSaved*bid
                 else:
-                    order.base = "USD"
-                    order.term = ccy
                     order.baseAmount = order.dealtAmount / order.price
                     order.termAmount = order.dealtAmount
                     saving = dealtSaved/bid - dealtSaved/ask
@@ -253,14 +247,10 @@ def getTotals(orders):
 
                 dealtSaved = netted[ccypair][0].dealtAmount
                 if isCcyBase(ccy):
-                    order.base = ccy
-                    order.term = "USD"
                     order.baseAmount = order.dealtAmount
                     order.termAmount = order.dealtAmount * order.price
                     saving = dealtSaved*ask - dealtSaved*bid
                 else:
-                    order.base = "USD"
-                    order.term = ccy
                     order.baseAmount = order.dealtAmount / order.price
                     order.termAmount = order.dealtAmount
                     saving = dealtSaved/bid - dealtSaved/ask
