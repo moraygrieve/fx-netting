@@ -1,9 +1,10 @@
 import random, math, copy, numpy
+from convention import marketConvention
 
 random.seed(24)
 
 #constants for the run
-ACCOUNTS = ['Account A','Account B','Account C','Account D']
+ACCOUNTS = [('Account A','USD'),('Account B','USD'),('Account C','USD'),('Account D','USD')]
 CURRENCIES = ['AUD','CAD','CHF','CNH','EUR','GBP','HKD','JPY','NZD','PLN']
 PRICES = {
     'AUDUSD':(0.76689, 0.76705),
@@ -57,7 +58,11 @@ def initAccounts():
     orders = {}  #map< account, map<currency, order> >
     for ccy in CURRENCIES:
         target[ccy]={}
-        for acct in ACCOUNTS:
+
+        for acct,denom in ACCOUNTS:
+            ccypair,base,term=marketConvention(ccy,denom)
+            bid, ask = PRICES.get(ccypair, (0,0))
+
             r = random.randint(-5,5)
             if (r > 2): ccy_amount = convertFromUSDMid(ccy, 1000000*random.randint(1,10))
             elif (r < -2): ccy_amount = convertFromUSDMid(ccy, -1000000*random.randint(1,10))
@@ -68,12 +73,12 @@ def initAccounts():
 
             order = FXOrder()
             order.account = acct
+            order.base = base
+            order.term = term
             order.dealtCurrency = ccy
             order.dealtAmount = math.fabs(ccy_amount)
+
             if isCcyBase(ccy):
-                order.base = ccy
-                order.term = "USD"
-                bid, ask = PRICES.get(ccy+"USD", (0,0))
                 if ccy_amount > 0:
                     order.price = ask
                     order.side = "BUY "
@@ -83,9 +88,6 @@ def initAccounts():
                 order.baseAmount = math.fabs(ccy_amount)
                 order.termAmount = math.fabs(usd_amount)
             else:
-                order.base = "USD"
-                order.term = ccy
-                bid, ask = PRICES.get("USD"+ccy, (0,0))
                 if ccy_amount > 0:
                     order.price = bid
                     order.side = "SELL"
@@ -143,13 +145,13 @@ def printPrices():
 
 def getHeader():
     header = "| %-5s" % "CCY"
-    for act in ACCOUNTS: header = header + "| %-12s" % act
+    for act,denom in ACCOUNTS: header = header + "| %-12s" % act
     return header+"|"
 
 
 def getRow(ccy, entries):
     row = "| %-5s" % ccy
-    for act in ACCOUNTS:
+    for act,denom in ACCOUNTS:
         row = row + "| %s" % formatRowEntry(entries.get(act, (0,0))[0])
     return row+"|"
 
@@ -170,7 +172,7 @@ def printTarget(target):
 
 def printOrders(orders):
         print ""
-        for act in ACCOUNTS:
+        for act,denom in ACCOUNTS:
             if not orders.has_key(act): continue
             for ccy in CURRENCIES:
                 ccypair = ccy+"USD" if isCcyBase(ccy) else "USD"+ccy
@@ -183,7 +185,7 @@ def getTotals(orders):
     netOrders = []
     for ccy in CURRENCIES:
         ccypair = ccy+"USD" if isCcyBase(ccy) else "USD"+ccy
-        for act in ACCOUNTS:
+        for act,denom in ACCOUNTS:
             if orders.has_key(act) and orders[act].has_key(ccypair):
                 if not netted.has_key(ccypair):
                     buy = FXOrder()

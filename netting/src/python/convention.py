@@ -1,11 +1,11 @@
 RANKING = ['EUR','GBP','AUD','NZD','USD','CHF','JPY']
 EXCEPTIONS={}
 
-def convention(ccy1,ccy2):
-    ccypair = marketConvention(ccy1,ccy2)
+def marketConvention(ccy1,ccy2):
+    ccypair = _marketConvention(ccy1,ccy2)
     return ccypair,ccypair[0:3],ccypair[3:6]
 
-def marketConvention(ccy1, ccy2):
+def _marketConvention(ccy1, ccy2):
     if EXCEPTIONS.has_key(ccy1+ccy2): return EXCEPTIONS[ccy1+ccy2]
     if EXCEPTIONS.has_key(ccy2+ccy1): return EXCEPTIONS[ccy2+ccy1]
     r1 = RANKING.index(ccy1) if ccy1 in RANKING else -1
