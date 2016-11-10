@@ -52,10 +52,8 @@ class FXOrder:
                (self.account, self.side, self.base, self.term, self.baseAmount, self.price, self.dealtAmount, self.dealtCurrency)
 
 def initAccounts():
-    """Populate the target positions randomly.
-    """
-    target = {}  #map< currency, map<account, (ccy, usd)> >
-    orders = {}  #map< account, map<currency, order> >
+    target = {}
+    orders = {}
     for ccy in CURRENCIES:
         target[ccy]={}
 
@@ -101,14 +99,9 @@ def initAccounts():
     return target, orders
 
 def roundup(amount):
-    """Roundup to the nearest million.
-    """
     return int(math.ceil(amount/1000000.0)) * 1000000
 
-
 def convertFromUSDMid(ccy, amount):
-    """Convert from USD to target currency, using mid price.
-    """
     if PRICES.has_key("USD"+ccy):
         bid, ask = PRICES.get("USD"+ccy)
         return roundup(amount * ((bid + ask)/2))
@@ -116,10 +109,7 @@ def convertFromUSDMid(ccy, amount):
         bid, ask = PRICES.get(ccy+"USD")
         return roundup(amount / ((bid + ask)/2))
 
-
 def convertToUSD(ccy, amount):
-    """Convert to USD from target currency, using bid or ask.
-    """
     if PRICES.has_key("USD"+ccy):
         bid, ask = PRICES.get("USD"+ccy)
         if (amount>0): return -1 * amount / bid
@@ -142,18 +132,15 @@ def getHeader():
     for act,denom in ACCOUNTS: header = header + "| %-12s" % act
     return header+"|"
 
-
 def getRow(ccy, entries):
     row = "| %-5s" % ccy
     for act,denom in ACCOUNTS:
         row = row + "| %s" % formatRowEntry(entries.get(act, (0,0))[0])
     return row+"|"
 
-
 def formatRowEntry(value):
     if (value == 0): return "%12s"%"0"
     return ("%12d"%value)
-
 
 def printTarget(target):
     header = getHeader()
@@ -163,7 +150,6 @@ def printTarget(target):
     for ccy in CURRENCIES: print getRow(ccy, target[ccy])
     print "-"*len(header)
 
-
 def printOrders(orders):
         print ""
         for act,denom in ACCOUNTS:
@@ -172,7 +158,6 @@ def printOrders(orders):
                 ccypair,base,term = marketConvention(ccy,denom)
                 if not orders[act].has_key(ccypair): continue
                 print orders[act][ccypair]
-
 
 def getTotals(orders):
     netted = {} #map<currency, (BUY, SELL)>
@@ -210,7 +195,6 @@ def getTotals(orders):
         bid, ask = PRICES.get(ccypair)
 
         if netted.has_key(ccypair):
-            #net out the dealt amount
             buyAmount = netted[ccypair][0].dealtAmount
             sellAmount = netted[ccypair][1].dealtAmount
             order = FXOrder()
@@ -260,7 +244,6 @@ def getTotals(orders):
     print "\nTotal USD amount saved across the accounts %.2f" % totalSaved
     return totalSaved, netOrders
 
-#the entry point
 if __name__ == "__main__":
     total = 0
     count = 0
