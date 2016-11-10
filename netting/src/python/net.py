@@ -1,131 +1,49 @@
-import random, math, copy, numpy
+import random, math
 from convention import marketConvention
+from orders import FXOrder, AccountOrders
+from prices import getPrice, printPrices
 
 random.seed(24)
-
-#constants for the run
 ACCOUNTS = [('Account A','USD'),('Account B','USD'),('Account C','USD'),('Account D','USD')]
 CURRENCIES = ['AUD','CAD','CHF','CNH','EUR','GBP','HKD','JPY','NZD','PLN']
-PRICES = {
-    'AUDUSD':(0.76689, 0.76705),
-    'USDCAD':(1.33698,1.33713),
-    'USDCHF':(0.97076,0.97096),
-    'USDCNH':(6.76904,6.76954),
-    'EURUSD':(1.11184,1.11193),
-    'GBPUSD':(1.23465,1.23485),
-    'USDHKD':(7.75517,7.75538),
-    'USDJPY':(102.61,102.62),
-    'NZDUSD':(0.73064,0.73084),
-    'USDPLN':(3.89141, 3.89354)
-}
-
-#data structures
-class FXOrder:
-    def __init__(self):
-        self.account = ""
-        self.base = ""
-        self.term = ""
-        self.side = ""
-        self.price = 0.0
-        self.baseAmount = 0
-        self.termAmount = 0
-        self.dealtCurrency = ""
-        self.dealtAmount = 0
-
-    def isBuy(self):
-        return self.side == "BUY "
-
-    def include(self, order):
-        self.base = order.base
-        self.term = order.term
-        self.side = order.side
-        self.price = order.price
-        self.baseAmount += order.baseAmount
-        self.termAmount += order.termAmount
-        self.dealtCurrency = order.dealtCurrency
-        self.dealtAmount += order.dealtAmount
-
-    def __str__(self):
-        fstring = "[%-10s] %s  %s%s  %12.2f @ %-10.5f (%-10d dealt %s)"
-        if self.dealtCurrency == 'JPY': fstring = "[%-10s] %s  %s%s  %12.2f @ %-10.2f (%-10d dealt %s)"
-        return fstring % \
-               (self.account, self.side, self.base, self.term, self.baseAmount, self.price, self.dealtAmount, self.dealtCurrency)
 
 def initAccounts():
     target = {}
-    orders = {}
+    orders = AccountOrders()
     for ccy in CURRENCIES:
         target[ccy]={}
 
         for acct,denom in ACCOUNTS:
-            ccypair,base,term=marketConvention(ccy,denom)
-            bid, ask = PRICES.get(ccypair, (0,0))
-
             r = random.randint(-5,5)
-            if (r > 2): ccy_amount = convertFromUSDMid(ccy, 1000000*random.randint(1,10))
-            elif (r < -2): ccy_amount = convertFromUSDMid(ccy, -1000000*random.randint(1,10))
+            if (r > 2): ccy_amount = convertFromDenomMid(ccy, denom, 1000000*random.randint(1,10))
+            elif (r < -2): ccy_amount = convertFromDenomMid(ccy, denom, -1000000*random.randint(1,10))
             else: continue
             if ccy_amount == 0: continue
-            usd_amount = convertToUSD(ccy, ccy_amount)
-            target[ccy][acct]= (ccy_amount, usd_amount)
-
-            order = FXOrder()
-            order.account = acct
-            order.base = base
-            order.term = term
-            order.dealtCurrency = ccy
-            order.dealtAmount = math.fabs(ccy_amount)
-
-            if ccy == base:
-                if ccy_amount > 0:
-                    order.price = ask
-                    order.side = "BUY "
-                else:
-                    order.price = bid
-                    order.side = "SELL"
-                order.baseAmount = math.fabs(ccy_amount)
-                order.termAmount = math.fabs(usd_amount)
-            else:
-                if ccy_amount > 0:
-                    order.price = bid
-                    order.side = "SELL"
-                else:
-                    order.price = ask
-                    order.side = "BUY "
-                order.baseAmount = math.fabs(usd_amount)
-                order.termAmount = math.fabs(ccy_amount)
-            if not orders.has_key(acct): orders[acct]={}
-            orders[acct][order.base+order.term]=order
+            contra_amount = convertToDenom(ccy, denom, ccy_amount)
+            target[ccy][acct]= (ccy_amount, contra_amount)
+            orders.addToAccount(acct, denom, ccy, ccy_amount, contra_amount)
     return target, orders
 
 def roundup(amount):
     return int(math.ceil(amount/1000000.0)) * 1000000
 
-def convertFromUSDMid(ccy, amount):
-    if PRICES.has_key("USD"+ccy):
-        bid, ask = PRICES.get("USD"+ccy)
+def convertFromDenomMid(ccy, denom, amount):
+    ccypair,base,term = marketConvention(ccy,denom)
+    bid,ask = getPrice(ccypair)
+    if ccy == term:
         return roundup(amount * ((bid + ask)/2))
-    elif PRICES.has_key(ccy+"USD"):
-        bid, ask = PRICES.get(ccy+"USD")
+    elif ccy == base:
         return roundup(amount / ((bid + ask)/2))
 
-def convertToUSD(ccy, amount):
-    if PRICES.has_key("USD"+ccy):
-        bid, ask = PRICES.get("USD"+ccy)
+def convertToDenom(ccy, denom, amount):
+    ccypair,base,term = marketConvention(ccy,denom)
+    bid,ask = getPrice(ccypair)
+    if ccy == term:
         if (amount>0): return -1 * amount / bid
         else: return -1 * amount / ask
-    elif PRICES.has_key(ccy+"USD"):
-        bid, ask = PRICES.get(ccy+"USD")
+    elif ccy == base:
         if (amount>0): return -1 * amount * ask
         else: return -1 * amount * bid
-
-def printPrices():
-    for ccypair in PRICES:
-        if ccypair == "USDJPY":
-            print "%s: %8.2f  %-8.2f" % (ccypair,PRICES[ccypair][0],PRICES[ccypair][1])
-        else:
-            print "%s: %8.5f  %-8.5f" % (ccypair,PRICES[ccypair][0],PRICES[ccypair][1])
-    print
 
 def getHeader():
     header = "| %-5s" % "CCY"
@@ -192,7 +110,7 @@ def getTotals(orders):
     totalSaved = 0
     for ccy in CURRENCIES:
         ccypair,base,term = marketConvention(ccy,denom)
-        bid, ask = PRICES.get(ccypair)
+        bid, ask = getPrice(ccypair)
 
         if netted.has_key(ccypair):
             buyAmount = netted[ccypair][0].dealtAmount
@@ -252,8 +170,8 @@ if __name__ == "__main__":
         target, rawOrders = initAccounts()
         printPrices()
         printTarget(target)
-        printOrders(rawOrders)
-        saved, netOrders = getTotals(rawOrders)
+        printOrders(rawOrders.orders)
+        saved, netOrders = getTotals(rawOrders.orders)
 
         total += saved
         count += 1
@@ -266,3 +184,4 @@ if __name__ == "__main__":
     #    print int(bin_edges[i]), hist[i]
 
     #print totals
+
