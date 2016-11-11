@@ -47,12 +47,12 @@ def convertTo(ccy1, ccy2, amount):
     #convert to ccy1 from ccy2 amount, using the bid or ask
     pair, base, term = marketConvention(ccy1, ccy2)
     bid, ask = getPrice(pair)
-    if ccy1 == term:
+    if ccy1 == term:     #ccy2 and amount are base, if +ve we are buying
+        if (amount > 0): return -1 * amount * ask
+        else: return -1 * amount* bid
+    elif ccy1 == base:   #ccy2 and amount are term, if +ve we are selling
         if (amount > 0): return -1 * amount / bid
         else: return -1 * amount / ask
-    elif ccy1 == base:
-        if (amount > 0): return -1 * amount * ask
-        else: return -1 * amount * bid
 
 def sortedKeys(dict):
     keys = dict.keys()
@@ -139,10 +139,10 @@ if __name__ == "__main__":
             contraCurrency = order.base if order.dealtCurrency == order.term else order.term
             if (contraCurrency != 'USD'):
                 savedUSD = convertToMid('USD', contraCurrency, saved)
-                print "%s - saving %8.2f %s (%8.2f USD)" % (order.__str__(), saved, contraCurrency, savedUSD)
+                print "%s (saving %8.2f %s, %8.2f USD)" % (order.__str__(), saved, contraCurrency, savedUSD)
                 saved = savedUSD
             else:
-                print "%s - saving %8.2f %s" % (order.__str__(), saved, contraCurrency)
+                print "%s (saving %8.2f %s)" % (order.__str__(), saved, contraCurrency)
             totalSaved += saved
 
         print "\nTotal USD amount saved across the accounts %.2f" % totalSaved
