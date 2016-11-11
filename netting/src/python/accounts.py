@@ -2,7 +2,7 @@ import math
 
 from convention import marketConvention
 from prices import getPrice
-from orders import FXOrder
+from orders import FXOrder, Side
 
 class Account:
     def __init__(self, name, base):
@@ -37,19 +37,19 @@ class Account:
         if ccy == base:
             if ccyAmount > 0:
                 order.price = ask
-                order.side = "BUY "
+                order.side = Side.BUY
             else:
                 order.price = bid
-                order.side = "SELL"
+                order.side = Side.SELL
             order.baseAmount = math.fabs(ccyAmount)
             order.termAmount = math.fabs(ccyAmount)
         else:
             if ccyAmount > 0:
                 order.price = bid
-                order.side = "SELL"
+                order.side = Side.SELL
             else:
                 order.price = ask
-                order.side = "BUY "
+                order.side = Side.BUY
             order.baseAmount = math.fabs(baseAmount)
             order.termAmount = math.fabs(ccyAmount)
         self.orders[pair]=order

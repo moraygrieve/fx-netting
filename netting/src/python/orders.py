@@ -1,9 +1,34 @@
+class Side:
+    BUY = "BUY"
+    SELL = "SELL"
+
 class FXOrder:
+
+    @staticmethod
+    def newBuyOrder(account, base, term, dealtCurrency):
+        order = FXOrder()
+        order.account = account
+        order.base = base
+        order.term = term
+        order.side = Side.BUY
+        order.dealtCurrency = dealtCurrency
+        return order
+
+    @staticmethod
+    def newSellOrder(account, base, term, dealtCurrency):
+        order = FXOrder()
+        order.account = account
+        order.base = base
+        order.term = term
+        order.side = Side.SELL
+        order.dealtCurrency = dealtCurrency
+        return order
+
     def __init__(self):
         self.account = ""
         self.base = ""
         self.term = ""
-        self.side = ""
+        self.side = None
         self.price = 0.0
         self.baseAmount = 0
         self.termAmount = 0
@@ -11,7 +36,7 @@ class FXOrder:
         self.dealtAmount = 0
 
     def isBuy(self):
-        return self.side == "BUY "
+        return self.side == Side.BUY
 
     def include(self, order):
         self.base = order.base

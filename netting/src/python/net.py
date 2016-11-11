@@ -1,6 +1,6 @@
 import random, math
 
-from orders import FXOrder
+from orders import FXOrder, Side
 from accounts import Accounts
 from prices import getPrice, printPrices
 from convention import marketConvention
@@ -62,21 +62,9 @@ def getTotals(accounts):
 
             if account.getOrders().has_key(pair):
                 if not aggregatedOrders.has_key(pair):
-                    buy = FXOrder()
-                    buy.account = "Aggregated"
-                    buy.base = base
-                    buy.term = term
-                    buy.side = "BUY "
-                    buy.dealtCurrency = ccy
-
-                    sell = FXOrder()
-                    sell.account = "Aggregated"
-                    sell.base = base
-                    sell.term = term
-                    sell.side = "SELL"
-                    sell.dealtCurrency = ccy
+                    buy = FXOrder.newBuyOrder("Aggregated", base, term, ccy)
+                    sell = FXOrder.newSellOrder("Aggregated", base, term, ccy)
                     aggregatedOrders[pair] = (buy, sell)
-
                 order = account.getOrders()[pair]
                 if order.isBuy():aggregatedOrders[pair][0].include(order)
                 else: aggregatedOrders[pair][1].include(order)
@@ -95,7 +83,7 @@ def getTotals(accounts):
         buyAmount = aggregatedOrders[pair][0].dealtAmount
         sellAmount = aggregatedOrders[pair][1].dealtAmount
         if (buyAmount >= sellAmount):
-            order.side = "BUY "
+            order.side = Side.BUY
             order.price = ask
             order.dealtAmount = aggregatedOrders[pair][0].dealtAmount - aggregatedOrders[pair][1].dealtAmount
 
@@ -110,7 +98,7 @@ def getTotals(accounts):
                 saving = dealtSaved/bid - dealtSaved/ask
 
         else:
-            order.side = "SELL"
+            order.side = Side.SELL
             order.price = bid
             order.dealtAmount = aggregatedOrders[pair][1].dealtAmount - aggregatedOrders[pair][0].dealtAmount
 

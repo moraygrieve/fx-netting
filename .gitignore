@@ -1,0 +1,7 @@
+*.pyc
+*.class
+bin/*
+logs/*
+java/bin/*
+build/*
+target/*
