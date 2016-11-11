@@ -22,6 +22,7 @@ class FXOrder:
         order.term = term
         order.side = Side.SELL
         order.dealtCurrency = dealtCurrency
+        order.saving = 0
         return order
 
     def __init__(self):
@@ -38,6 +39,12 @@ class FXOrder:
     def isBuy(self):
         return self.side == Side.BUY
 
+    def addSaving(self, saving):
+        self.saving = saving
+
+    def getSaving(self):
+        return self.saving
+
     def include(self, order):
         self.base = order.base
         self.term = order.term
@@ -49,7 +56,7 @@ class FXOrder:
         self.dealtAmount += order.dealtAmount
 
     def __str__(self):
-        fstring = "[%-10s] %s  %s%s  %12.2f @ %-10.5f (%-10d dealt %s)"
-        if self.dealtCurrency == 'JPY': fstring = "[%-10s] %s  %s%s  %12.2f @ %-10.2f (%-10d dealt %s)"
+        fstring = "[%-10s] %-4s  %s%s  %12.2f @ %-10.5f (%-10d dealt %s)"
+        if self.dealtCurrency == 'JPY': fstring = "[%-10s] %-4s  %s%s  %12.2f @ %-10.2f (%-10d dealt %s)"
         return fstring % \
                (self.account, self.side, self.base, self.term, self.baseAmount, self.price, self.dealtAmount, self.dealtCurrency)

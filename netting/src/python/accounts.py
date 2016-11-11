@@ -100,13 +100,13 @@ class Accounts:
 
     def __getHeader(self):
         header = "| %-5s" % "CCY"
-        for name in self.getAccountNames(): header = header + "| %-12s" % name
+        for name in self.getAccountNames(): header = header + "| %12s (%s)" % (name, self.accounts[name].base)
         return header+"|"
 
     def __getRow(self, ccy):
         row = "| %-5s" % ccy
         for names in self.getAccountNames():
-            row = row + "| %s" % self.__formatRowEntry(self.accounts[names].getTarget(ccy)[0])
+            row = row + "|%+19s" % self.__formatRowEntry(self.accounts[names].getTarget(ccy)[0])
         return row+"|"
 
     def __formatRowEntry(self, value):

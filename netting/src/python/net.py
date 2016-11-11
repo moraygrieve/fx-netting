@@ -8,7 +8,7 @@ from convention import marketConvention
 random.seed(24)
 
 ACCOUNTS = [('Account A','USD'),('Account B','USD'),('Account C','USD'),('Account D','USD')]
-CURRENCIES = ['AUD','CAD','CHF','CNH','EUR','GBP','HKD','JPY','NZD','PLN']
+CURRENCIES = ['AUD','CAD','CHF','CNH', 'EUR','GBP','HKD','JPY','NZD','PLN','USD']
 
 def initAccounts():
     accounts = Accounts(CURRENCIES)
@@ -16,6 +16,7 @@ def initAccounts():
 
     for ccy in CURRENCIES:
         for accountName, accountCcy in ACCOUNTS:
+            if ccy == accountCcy: continue
             r = random.randint(-5,5)
             if (r > 2): ccy_amount = convertFromMid(ccy, accountCcy, 1000000*random.randint(1,10))
             elif (r < -2): ccy_amount = convertFromMid(ccy, accountCcy, -1000000*random.randint(1,10))
@@ -30,6 +31,7 @@ def roundup(amount):
     return int(math.ceil(amount/1000000.0)) * 1000000
 
 def convertFromMid(ccy1, ccy2, amount):
+    print ccy1, ccy2
     pair, base, term = marketConvention(ccy1, ccy2)
     bid, ask = getPrice(pair)
     if ccy1 == term:
@@ -91,11 +93,11 @@ def getTotals(accounts):
             if order.dealtCurrency == order.base:
                 order.baseAmount = order.dealtAmount
                 order.termAmount = order.dealtAmount * order.price
-                saving = dealtSaved*ask - dealtSaved*bid
+                order.addSaving(dealtSaved*ask - dealtSaved*bid)
             else:
                 order.baseAmount = order.dealtAmount / order.price
                 order.termAmount = order.dealtAmount
-                saving = dealtSaved/bid - dealtSaved/ask
+                order.addSaving(dealtSaved/bid - dealtSaved/ask)
 
         else:
             order.side = Side.SELL
@@ -106,16 +108,16 @@ def getTotals(accounts):
             if order.dealtCurrency == order.base:
                 order.baseAmount = order.dealtAmount
                 order.termAmount = order.dealtAmount * order.price
-                saving = dealtSaved*ask - dealtSaved*bid
+                order.addSaving(dealtSaved*ask - dealtSaved*bid)
             else:
                 order.baseAmount = order.dealtAmount / order.price
                 order.termAmount = order.dealtAmount
-                saving = dealtSaved/bid - dealtSaved/ask
+                order.addSaving(dealtSaved/bid - dealtSaved/ask)
 
-        totalSaved += saving
+        totalSaved += order.getSaving()
         if (order.baseAmount > 0):
             nettedOrders.append(order)
-            print "%s - saving %.2f USD" % (order.__str__(), saving)
+            print "%s - saving %.2f %s" % (order.__str__(), order.getSaving(), order.base if order.dealtCurrency == order.term else order.term)
     print "\nTotal USD amount saved across the accounts %.2f" % totalSaved
     return totalSaved, nettedOrders
 
