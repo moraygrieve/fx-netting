@@ -35,10 +35,10 @@ class CrossFXOrder:
         #set the amounts
         if (self.left.dealtCurrency == order.dealtCurrency):
             self.left.setAmounts(order.dealtAmount)
-            self.right.setAmounts(self.left.contraAmount)
+            self.right.setAmounts(self.left.contraAmount())
         else:
             self.right.setAmounts(order.dealtAmount)
-            self.left.setAmounts(self.right.contraAmount)
+            self.left.setAmounts(self.right.contraAmount())
 
 
 class FXOrder:
@@ -73,7 +73,6 @@ class FXOrder:
         self.baseAmount = 0
         self.termAmount = 0
         self.dealtAmount = 0
-        self.contraAmount = 0
         self.saving = 0
 
     def setAmounts(self, dealtAmount):
@@ -83,11 +82,9 @@ class FXOrder:
         if (self.base == self.dealtCurrency):
             self.baseAmount = dealtAmount
             self.termAmount = dealtAmount * self.price
-            self.contraAmount = self.termAmount
         else:
             self.baseAmount = dealtAmount / self.price
             self.termAmount = dealtAmount
-            self.contraAmount = self.baseAmount
 
     def isBuy(self):
         return self.side == Side.BUY
@@ -98,6 +95,15 @@ class FXOrder:
     def getSaving(self):
         return self.saving
 
+    def contraCurrency(self):
+        return self.base if self.dealtCurrency == self.term else self.term
+
+    def contraAmount(self):
+        amount = self.baseAmount if self.dealtCurrency == self.term else self.termAmount
+        if self.isBuy() and self.base == self.dealtCurrency: return -1.0 * amount
+        if not self.isBuy() and self.term == self.dealtCurrency: return -1.0 * amount
+        return amount
+
     def include(self, order):
         self.base = order.base
         self.term = order.term
@@ -105,14 +111,17 @@ class FXOrder:
         self.price = order.price
         self.baseAmount += order.baseAmount
         self.termAmount += order.termAmount
-        self.dealtCurrency = order.dealtCurrency
-        self.dealtAmount += order.dealtAmount
+        if (order.dealtCurrency == self.dealtCurrency):
+            self.dealtAmount += order.dealtAmount
+        else:
+            contraAmount = order.baseAmount if order.dealtCurrency == order.term else order.termAmount
+            self.dealtAmount += contraAmount
 
     def __str__(self):
-        fstring = "[%-10s] %-4s  %s%s  %12.2f @ %-10.5f %10d %s dealt, %10d contra "
-        if self.dealtCurrency == 'JPY': fstring = "[%-10s] %-4s  %s%s  %12.2f @ %-10.2f %10d %s dealt, %10d contra  "
+        fstring = "[%-10s] %-4s  %s%s  %12.2f @ %-10.5f %10d %s dealt "
+        if self.dealtCurrency == 'JPY': fstring = "[%-10s] %-4s  %s%s  %12.2f @ %-10.2f %10d %s dealt "
         return fstring % \
-               (self.account, self.side, self.base, self.term, self.baseAmount, self.price, self.dealtAmount, self.dealtCurrency, self.contraAmount)
+               (self.account, self.side, self.base, self.term, self.baseAmount, self.price, self.dealtAmount, self.dealtCurrency)
 
 
 if __name__ == "__main__":

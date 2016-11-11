@@ -7,11 +7,11 @@ from convention import marketConvention
 
 random.seed(24)
 
-ACCOUNTS = [('Account A','USD'),('Account B','USD'),('Account C','USD'),('Account D','USD')]
-CURRENCIES = ['AUD','CAD','CHF','CNH', 'EUR','GBP','HKD','JPY','NZD','PLN','USD']
+#ACCOUNTS = [('Account A','USD'),('Account B','USD'),('Account C','USD'),('Account D','USD')]
+#CURRENCIES = ['AUD','CAD','CHF','CNH', 'EUR','GBP','HKD','JPY','NZD','PLN','USD']
 
-#ACCOUNTS = [('Account A','USD'),('Account B','EUR'),('Account C','USD'),('Account D','USD'),('Account E','EUR')]
-#CURRENCIES = ['AUD','CAD','CHF','EUR','GBP','HKD','JPY','NZD','PLN','USD']
+ACCOUNTS = [('Account A','USD'),('Account B','EUR'),('Account C','USD'),('Account D','USD'),('Account E','EUR')]
+CURRENCIES = ['AUD','CAD','CHF','GBP','EUR','HKD','JPY','NZD','PLN','USD']
 
 
 def initAccounts():
@@ -99,23 +99,21 @@ if __name__ == "__main__":
         printPrices()
         accounts.printAccountTargets()
         accounts.printAccountOrders()
-
-        totalUSD1 = 0
-        for order in accounts.getAccountOrders():
-            if order.isBuy() and order.base == order.dealtCurrency: contra = -1.0 * order.contraAmount
-            elif order.isBuy() and order.term == order.dealtCurrency: contra = order.contraAmount
-            elif not order.isBuy() and order.base == order.dealtCurrency: contra = order.contraAmount
-            elif not order.isBuy() and order.term == order.dealtCurrency: contra = -1.0 * order.contraAmount
-            totalUSD1 += contra
-
         netOrders = getTotals(accounts)
-        totalUSD2 = 0
+
+        accountCCYTotal1 = 0
+        for order in accounts.getAccountOrders():
+            contraCCy = order.contraCurrency()
+            contraAmount = order.contraAmount() if contraCCy=='USD' else convertToMid('USD',contraCCy, order.contraAmount())
+            accountCCYTotal1 += contraAmount
+        print accountCCYTotal1
+
+        nettedCCYTotal2 = 0
         for order in netOrders:
-            if order.isBuy() and order.base == order.dealtCurrency: contra = -1.0 * order.contraAmount
-            elif order.isBuy() and order.term == order.dealtCurrency: contra = order.contraAmount
-            elif not order.isBuy() and order.base == order.dealtCurrency: contra = order.contraAmount
-            elif not order.isBuy() and order.term == order.dealtCurrency: contra = -1.0 * order.contraAmount
-            totalUSD2 += contra
+            contraCCy = order.contraCurrency()
+            contraAmount = order.contraAmount() if contraCCy=='USD' else convertToMid('USD',contraCCy, order.contraAmount())
+            nettedCCYTotal2 += contraAmount
+        print nettedCCYTotal2
 
         print ""
         totalSaved = 0
@@ -127,12 +125,14 @@ if __name__ == "__main__":
                 print "%s (saving %8.2f %s, %8.2f USD)" % (order.__str__(), saved, contraCurrency, savedUSD)
                 saved = savedUSD
             else:
+                pass
                 print "%s (saving %8.2f %s)" % (order.__str__(), saved, contraCurrency)
             totalSaved += saved
 
         print "\nTotal USD amount saved across the accounts (using individual trades) %.2f" % totalSaved
 
-        print "\nTotal USD amount saved across the accounts (using net account flow) %.2f" % (totalUSD2 - totalUSD1)
+        print "\nTotal USD amount saved across the accounts (using net account flow) %.2f" % (nettedCCYTotal2 - accountCCYTotal1)
+
 
         total += totalSaved
         count += 1
