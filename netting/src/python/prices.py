@@ -11,13 +11,15 @@ PRICES = {
     'USDPLN':(3.89141, 3.89354)
 }
 
-def getPrice(ccypair):
-    return PRICES.get(ccypair)
+def getPrice(pair):
+    return PRICES.get(pair)
 
 def printPrices():
-    for ccypair in PRICES:
-        if ccypair == "USDJPY":
-            print "%s: %8.2f  %-8.2f" % (ccypair,PRICES[ccypair][0],PRICES[ccypair][1])
+    pairs = PRICES.keys()
+    pairs.sort()
+    for pair in pairs:
+        if pair == "USDJPY":
+            print "%s: %8.2f  %-8.2f" % (pair,PRICES[pair][0],PRICES[pair][1])
         else:
-            print "%s: %8.5f  %-8.5f" % (ccypair,PRICES[ccypair][0],PRICES[ccypair][1])
+            print "%s: %8.5f  %-8.5f" % (pair,PRICES[pair][0],PRICES[pair][1])
     print

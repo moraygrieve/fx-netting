@@ -1,155 +1,146 @@
 import random, math
-from convention import marketConvention
-from orders import FXOrder, AccountOrders
-from prices import getPrice, printPrices
+
+from orders import FXOrder
 from accounts import Accounts
+from prices import getPrice, printPrices
+from convention import marketConvention
 
 random.seed(24)
+
 ACCOUNTS = [('Account A','USD'),('Account B','USD'),('Account C','USD'),('Account D','USD')]
 CURRENCIES = ['AUD','CAD','CHF','CNH','EUR','GBP','HKD','JPY','NZD','PLN']
 
 def initAccounts():
     accounts = Accounts(CURRENCIES)
-    orders = AccountOrders()
-    for acct,denom in ACCOUNTS:  accounts.addAccount(acct,denom)
+    for accountName, accountCcy in ACCOUNTS: accounts.addAccount(accountName, accountCcy)
 
     for ccy in CURRENCIES:
-        for acct,denom in ACCOUNTS:
+        for accountName, accountCcy in ACCOUNTS:
             r = random.randint(-5,5)
-            if (r > 2): ccy_amount = convertFromDenomMid(ccy, denom, 1000000*random.randint(1,10))
-            elif (r < -2): ccy_amount = convertFromDenomMid(ccy, denom, -1000000*random.randint(1,10))
+            if (r > 2): ccy_amount = convertFromMid(ccy, accountCcy, 1000000*random.randint(1,10))
+            elif (r < -2): ccy_amount = convertFromMid(ccy, accountCcy, -1000000*random.randint(1,10))
             else: continue
             if ccy_amount == 0: continue
-            contra_amount = convertToDenom(ccy, denom, ccy_amount)
-            accounts.addAccountTarget(acct, ccy, ccy_amount, contra_amount)
-            orders.addToAccount(acct, denom, ccy, ccy_amount, contra_amount)
-    return accounts, orders
+
+            contra_amount = convertFromSide(ccy, accountCcy, ccy_amount)
+            accounts.addAccountTarget(accountName, ccy, ccy_amount, contra_amount)
+    return accounts
 
 def roundup(amount):
     return int(math.ceil(amount/1000000.0)) * 1000000
 
-def convertFromDenomMid(ccy, denom, amount):
-    ccypair,base,term = marketConvention(ccy,denom)
-    bid,ask = getPrice(ccypair)
-    if ccy == term:
+def convertFromMid(ccy1, ccy2, amount):
+    pair,base,term = marketConvention(ccy1, ccy2)
+    bid,ask = getPrice(pair)
+    if ccy1 == term:
         return roundup(amount * ((bid + ask)/2))
-    elif ccy == base:
+    elif ccy1 == base:
         return roundup(amount / ((bid + ask)/2))
 
-def convertToDenom(ccy, denom, amount):
-    ccypair,base,term = marketConvention(ccy,denom)
-    bid,ask = getPrice(ccypair)
-    if ccy == term:
+def convertFromSide(ccy1, ccy2, amount):
+    pair,base,term = marketConvention(ccy1, ccy2)
+    bid,ask = getPrice(pair)
+    if ccy1 == term:
         if (amount>0): return -1 * amount / bid
         else: return -1 * amount / ask
-    elif ccy == base:
+    elif ccy1 == base:
         if (amount>0): return -1 * amount * ask
         else: return -1 * amount * bid
 
-def printOrders(orders):
-        print ""
-        for act,denom in ACCOUNTS:
-            if not orders.has_key(act): continue
-            for ccy in CURRENCIES:
-                ccypair,base,term = marketConvention(ccy,denom)
-                if not orders[act].has_key(ccypair): continue
-                print orders[act][ccypair]
+def sortedKeys(dict):
+    keys = dict.keys()
+    keys.sort()
+    return keys
 
-def getTotals(orders):
-    netted = {} #map<currency, (BUY, SELL)>
-    netOrders = []
-    for ccy in CURRENCIES:
+def getTotals(accounts):
+    aggregatedOrders = {}
+    nettedOrders = []
+    for ccy in accounts.currencies :
+        for name in accounts.getAccountNames():
+            account = accounts.getAccount(name)
+            pair, base, term = marketConvention(ccy, account.getBase())
 
-        for act,denom in ACCOUNTS:
-            ccypair,base,term = marketConvention(ccy,denom)
-
-            if orders.has_key(act) and orders[act].has_key(ccypair):
-                if not netted.has_key(ccypair):
+            if account.getOrders().has_key(pair):
+                if not aggregatedOrders.has_key(pair):
                     buy = FXOrder()
-                    buy.account = "Netted"
+                    buy.account = "Aggregated"
                     buy.base = base
                     buy.term = term
                     buy.side = "BUY "
                     buy.dealtCurrency = ccy
 
                     sell = FXOrder()
-                    sell.account = "Netted"
+                    sell.account = "Aggregated"
                     sell.base = base
                     sell.term = term
                     sell.side = "SELL"
                     sell.dealtCurrency = ccy
-                    netted[ccypair] = (buy, sell)
+                    aggregatedOrders[pair] = (buy, sell)
 
-                order = orders[act][ccypair]
-                if order.isBuy():netted[ccypair][0].include(order)
-                else: netted[ccypair][1].include(order)
+                order = account.getOrders()[pair]
+                if order.isBuy():aggregatedOrders[pair][0].include(order)
+                else: aggregatedOrders[pair][1].include(order)
 
-    print ""
     totalSaved = 0
-    for ccy in CURRENCIES:
-        ccypair,base,term = marketConvention(ccy,denom)
-        bid, ask = getPrice(ccypair)
+    print ""
+    for pair in sortedKeys(aggregatedOrders):
+        bid, ask = getPrice(pair)
 
-        if netted.has_key(ccypair):
-            buyAmount = netted[ccypair][0].dealtAmount
-            sellAmount = netted[ccypair][1].dealtAmount
-            order = FXOrder()
-            order.account = "Netted"
-            order.base = base
-            order.term = term
-            order.dealtCurrency = ccy
+        order = FXOrder()
+        order.account = "Netted"
+        order.base = aggregatedOrders[pair][0].base
+        order.term = aggregatedOrders[pair][0].term
+        order.dealtCurrency = aggregatedOrders[pair][0].dealtCurrency
 
-            if (buyAmount >= sellAmount):
-                order.side = "BUY "
-                order.price = ask
-                order.dealtAmount = netted[ccypair][0].dealtAmount - netted[ccypair][1].dealtAmount
+        buyAmount = aggregatedOrders[pair][0].dealtAmount
+        sellAmount = aggregatedOrders[pair][1].dealtAmount
+        if (buyAmount >= sellAmount):
+            order.side = "BUY "
+            order.price = ask
+            order.dealtAmount = aggregatedOrders[pair][0].dealtAmount - aggregatedOrders[pair][1].dealtAmount
 
-                dealtSaved = netted[ccypair][1].dealtAmount
-                if ccy == base:
-                    order.baseAmount = order.dealtAmount
-                    order.termAmount = order.dealtAmount * order.price
-                    saving = dealtSaved*ask - dealtSaved*bid
-                else:
-                    order.baseAmount = order.dealtAmount / order.price
-                    order.termAmount = order.dealtAmount
-                    saving = dealtSaved/bid - dealtSaved/ask
-
+            dealtSaved = aggregatedOrders[pair][1].dealtAmount
+            if order.dealtCurrency == order.base:
+                order.baseAmount = order.dealtAmount
+                order.termAmount = order.dealtAmount * order.price
+                saving = dealtSaved*ask - dealtSaved*bid
             else:
-                order.side = "SELL"
-                order.price = bid
-                order.dealtAmount = netted[ccypair][1].dealtAmount - netted[ccypair][0].dealtAmount
+                order.baseAmount = order.dealtAmount / order.price
+                order.termAmount = order.dealtAmount
+                saving = dealtSaved/bid - dealtSaved/ask
 
-                dealtSaved = netted[ccypair][0].dealtAmount
-                if ccy == base:
-                    order.baseAmount = order.dealtAmount
-                    order.termAmount = order.dealtAmount * order.price
-                    saving = dealtSaved*ask - dealtSaved*bid
-                else:
-                    order.baseAmount = order.dealtAmount / order.price
-                    order.termAmount = order.dealtAmount
-                    saving = dealtSaved/bid - dealtSaved/ask
+        else:
+            order.side = "SELL"
+            order.price = bid
+            order.dealtAmount = aggregatedOrders[pair][1].dealtAmount - aggregatedOrders[pair][0].dealtAmount
 
-            totalSaved += saving
+            dealtSaved = aggregatedOrders[pair][0].dealtAmount
+            if order.dealtCurrency == order.base:
+                order.baseAmount = order.dealtAmount
+                order.termAmount = order.dealtAmount * order.price
+                saving = dealtSaved*ask - dealtSaved*bid
+            else:
+                order.baseAmount = order.dealtAmount / order.price
+                order.termAmount = order.dealtAmount
+                saving = dealtSaved/bid - dealtSaved/ask
 
-            #print netted[ccypair][0]
-            #print netted[ccypair][1]
-            if (order.baseAmount > 0):
-                netOrders.append(order)
-                fstring = "%s - saving %.2f USD"
-                print fstring % (order.__str__(), saving)
+        totalSaved += saving
+        if (order.baseAmount > 0):
+            nettedOrders.append(order)
+            print "%s - saving %.2f USD" % (order.__str__(), saving)
     print "\nTotal USD amount saved across the accounts %.2f" % totalSaved
-    return totalSaved, netOrders
+    return totalSaved, nettedOrders
 
 if __name__ == "__main__":
     total = 0
     count = 0
     totals = []
     for i in range(0,1):
-        accounts, rawOrders = initAccounts()
+        accounts = initAccounts()
         printPrices()
-        accounts.printTarget()
-        printOrders(rawOrders.orders)
-        saved, netOrders = getTotals(rawOrders.orders)
+        accounts.printAccountTargets()
+        accounts.printAccountOrders()
+        saved, netOrders = getTotals(accounts)
 
         total += saved
         count += 1
@@ -160,6 +151,5 @@ if __name__ == "__main__":
     #hist, bin_edges = numpy.histogram(totals, 100)
     #for i in range(0, len(hist)):
     #    print int(bin_edges[i]), hist[i]
-
     #print totals
 

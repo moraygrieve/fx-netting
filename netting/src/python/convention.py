@@ -1,9 +1,9 @@
 RANKING = ['EUR','GBP','AUD','NZD','USD','CHF','JPY']
-EXCEPTIONS={}
+EXCEPTIONS = {}
 
 def marketConvention(ccy1,ccy2):
-    ccypair = _marketConvention(ccy1,ccy2)
-    return ccypair,ccypair[0:3],ccypair[3:6]
+    pair = _marketConvention(ccy1,ccy2)
+    return pair, pair[0:3], pair[3:6]
 
 def _marketConvention(ccy1, ccy2):
     if EXCEPTIONS.has_key(ccy1+ccy2): return EXCEPTIONS[ccy1+ccy2]
@@ -14,8 +14,8 @@ def _marketConvention(ccy1, ccy2):
     if r1>=0: return ccy1+ccy2
     if r2>=0: return ccy2+ccy1
 
-def add(ccypair, ccy1, ccy2):
-    EXCEPTIONS[ccy1+ccy2]=ccypair
+def add(pair, ccy1, ccy2):
+    EXCEPTIONS[ccy1+ccy2]=pair
 
 add("CADCHF","CAD","CHF");
 add("CADCZK","CAD","CZK");
