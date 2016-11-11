@@ -30,21 +30,21 @@ def roundup(amount):
     return int(math.ceil(amount/1000000.0)) * 1000000
 
 def convertFromMid(ccy1, ccy2, amount):
-    pair,base,term = marketConvention(ccy1, ccy2)
-    bid,ask = getPrice(pair)
+    pair, base, term = marketConvention(ccy1, ccy2)
+    bid, ask = getPrice(pair)
     if ccy1 == term:
         return roundup(amount * ((bid + ask)/2))
     elif ccy1 == base:
         return roundup(amount / ((bid + ask)/2))
 
 def convertFromSide(ccy1, ccy2, amount):
-    pair,base,term = marketConvention(ccy1, ccy2)
-    bid,ask = getPrice(pair)
+    pair, base, term = marketConvention(ccy1, ccy2)
+    bid, ask = getPrice(pair)
     if ccy1 == term:
-        if (amount>0): return -1 * amount / bid
+        if (amount > 0): return -1 * amount / bid
         else: return -1 * amount / ask
     elif ccy1 == base:
-        if (amount>0): return -1 * amount * ask
+        if (amount > 0): return -1 * amount * ask
         else: return -1 * amount * bid
 
 def sortedKeys(dict):
