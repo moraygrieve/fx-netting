@@ -34,6 +34,7 @@ class Account:
         order.term = term
         order.dealtCurrency = ccy
         order.dealtAmount = math.fabs(ccyAmount)
+        order.contraAmount = math.fabs(baseAmount)
         if ccy == base:
             if ccyAmount > 0:
                 order.price = ask

@@ -99,7 +99,23 @@ if __name__ == "__main__":
         printPrices()
         accounts.printAccountTargets()
         accounts.printAccountOrders()
+
+        totalUSD1 = 0
+        for order in accounts.getAccountOrders():
+            if order.isBuy() and order.base == order.dealtCurrency: contra = -1.0 * order.contraAmount
+            elif order.isBuy() and order.term == order.dealtCurrency: contra = order.contraAmount
+            elif not order.isBuy() and order.base == order.dealtCurrency: contra = order.contraAmount
+            elif not order.isBuy() and order.term == order.dealtCurrency: contra = -1.0 * order.contraAmount
+            totalUSD1 += contra
+
         netOrders = getTotals(accounts)
+        totalUSD2 = 0
+        for order in netOrders:
+            if order.isBuy() and order.base == order.dealtCurrency: contra = -1.0 * order.contraAmount
+            elif order.isBuy() and order.term == order.dealtCurrency: contra = order.contraAmount
+            elif not order.isBuy() and order.base == order.dealtCurrency: contra = order.contraAmount
+            elif not order.isBuy() and order.term == order.dealtCurrency: contra = -1.0 * order.contraAmount
+            totalUSD2 += contra
 
         print ""
         totalSaved = 0
@@ -114,7 +130,9 @@ if __name__ == "__main__":
                 print "%s (saving %8.2f %s)" % (order.__str__(), saved, contraCurrency)
             totalSaved += saved
 
-        print "\nTotal USD amount saved across the accounts %.2f" % totalSaved
+        print "\nTotal USD amount saved across the accounts (using individual trades) %.2f" % totalSaved
+
+        print "\nTotal USD amount saved across the accounts (using net account flow) %.2f" % (totalUSD2 - totalUSD1)
 
         total += totalSaved
         count += 1

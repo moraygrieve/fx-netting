@@ -109,10 +109,10 @@ class FXOrder:
         self.dealtAmount += order.dealtAmount
 
     def __str__(self):
-        fstring = "[%-10s] %-4s  %s%s  %12.2f @ %-10.5f %10d %s dealt "
-        if self.dealtCurrency == 'JPY': fstring = "[%-10s] %-4s  %s%s  %12.2f @ %-10.2f %10d %s dealt "
+        fstring = "[%-10s] %-4s  %s%s  %12.2f @ %-10.5f %10d %s dealt, %10d contra "
+        if self.dealtCurrency == 'JPY': fstring = "[%-10s] %-4s  %s%s  %12.2f @ %-10.2f %10d %s dealt, %10d contra  "
         return fstring % \
-               (self.account, self.side, self.base, self.term, self.baseAmount, self.price, self.dealtAmount, self.dealtCurrency)
+               (self.account, self.side, self.base, self.term, self.baseAmount, self.price, self.dealtAmount, self.dealtCurrency, self.contraAmount)
 
 
 if __name__ == "__main__":
