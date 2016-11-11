@@ -42,7 +42,7 @@ class Account:
                 order.price = bid
                 order.side = Side.SELL
             order.baseAmount = math.fabs(ccyAmount)
-            order.termAmount = math.fabs(ccyAmount)
+            order.termAmount = math.fabs(baseAmount)
         else:
             if ccyAmount > 0:
                 order.price = bid

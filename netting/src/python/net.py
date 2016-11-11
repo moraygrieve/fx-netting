@@ -10,6 +10,10 @@ random.seed(24)
 ACCOUNTS = [('Account A','USD'),('Account B','USD'),('Account C','USD'),('Account D','USD')]
 CURRENCIES = ['AUD','CAD','CHF','CNH', 'EUR','GBP','HKD','JPY','NZD','PLN','USD']
 
+#ACCOUNTS = [('Account A','USD'),('Account B','EUR'),('Account C','USD'),('Account D','USD'),('Account E','EUR')]
+#CURRENCIES = ['AUD','CAD','CHF','EUR','GBP','HKD','JPY','NZD','PLN','USD']
+
+
 def initAccounts():
     accounts = Accounts(CURRENCIES)
     for accountName, accountCcy in ACCOUNTS: accounts.addAccount(accountName, accountCcy)
@@ -18,28 +22,29 @@ def initAccounts():
         for accountName, accountCcy in ACCOUNTS:
             if ccy == accountCcy: continue
             r = random.randint(-5,5)
-            if (r > 2): ccy_amount = convertFromMid(ccy, accountCcy, 1000000*random.randint(1,10))
-            elif (r < -2): ccy_amount = convertFromMid(ccy, accountCcy, -1000000*random.randint(1,10))
+            if (r > 2): target_amount = roundup(convertToMid(ccy, accountCcy, 1000000*random.randint(1,10)))
+            elif (r < -2): target_amount = roundup(convertToMid(ccy, accountCcy, -1000000*random.randint(1,10)))
             else: continue
-            if ccy_amount == 0: continue
+            if target_amount == 0: continue
 
-            contra_amount = convertFromSide(ccy, accountCcy, ccy_amount)
-            accounts.addAccountTarget(accountName, ccy, ccy_amount, contra_amount)
+            account_base_amount = convertTo(accountCcy, ccy, target_amount)
+            accounts.addAccountTarget(accountName, ccy, target_amount, account_base_amount)
     return accounts
 
 def roundup(amount):
     return int(math.ceil(amount/1000000.0)) * 1000000
 
-def convertFromMid(ccy1, ccy2, amount):
-    print ccy1, ccy2
+def convertToMid(ccy1, ccy2, amount):
+    #Convert to ccy1 from ccy2 amount using the mid price
     pair, base, term = marketConvention(ccy1, ccy2)
     bid, ask = getPrice(pair)
     if ccy1 == term:
-        return roundup(amount * ((bid + ask)/2))
+        return amount * ((bid + ask)/2)
     elif ccy1 == base:
-        return roundup(amount / ((bid + ask)/2))
+        return amount / ((bid + ask)/2)
 
-def convertFromSide(ccy1, ccy2, amount):
+def convertTo(ccy1, ccy2, amount):
+    #convert to ccy1 from ccy2 amount, using the bid or ask
     pair, base, term = marketConvention(ccy1, ccy2)
     bid, ask = getPrice(pair)
     if ccy1 == term:
@@ -71,8 +76,6 @@ def getTotals(accounts):
                 if order.isBuy():aggregatedOrders[pair][0].include(order)
                 else: aggregatedOrders[pair][1].include(order)
 
-    totalSaved = 0
-    print ""
     for pair in sortedKeys(aggregatedOrders):
         bid, ask = getPrice(pair)
 
@@ -114,12 +117,9 @@ def getTotals(accounts):
                 order.termAmount = order.dealtAmount
                 order.addSaving(dealtSaved/bid - dealtSaved/ask)
 
-        totalSaved += order.getSaving()
-        if (order.baseAmount > 0):
-            nettedOrders.append(order)
-            print "%s - saving %.2f %s" % (order.__str__(), order.getSaving(), order.base if order.dealtCurrency == order.term else order.term)
-    print "\nTotal USD amount saved across the accounts %.2f" % totalSaved
-    return totalSaved, nettedOrders
+        nettedOrders.append(order)
+
+    return nettedOrders
 
 if __name__ == "__main__":
     total = 0
@@ -130,9 +130,24 @@ if __name__ == "__main__":
         printPrices()
         accounts.printAccountTargets()
         accounts.printAccountOrders()
-        saved, netOrders = getTotals(accounts)
+        netOrders = getTotals(accounts)
 
-        total += saved
+        print ""
+        totalSaved = 0
+        for order in netOrders:
+            saved = order.getSaving()
+            contraCurrency = order.base if order.dealtCurrency == order.term else order.term
+            if (contraCurrency != 'USD'):
+                savedUSD = convertToMid('USD', contraCurrency, saved)
+                print "%s - saving %8.2f %s (%8.2f USD)" % (order.__str__(), saved, contraCurrency, savedUSD)
+                saved = savedUSD
+            else:
+                print "%s - saving %8.2f %s" % (order.__str__(), saved, contraCurrency)
+            totalSaved += saved
+
+        print "\nTotal USD amount saved across the accounts %.2f" % totalSaved
+
+        total += totalSaved
         count += 1
         totals.append(saved)
     print "Average = %f" % (total /count)
