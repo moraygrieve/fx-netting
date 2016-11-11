@@ -1,3 +1,5 @@
+from convention import marketConvention
+
 PRICES = {
     'AUDUSD':(0.76689, 0.76705),
     'USDCAD':(1.33698,1.33713),
@@ -21,6 +23,27 @@ PRICES = {
 
 def getPrice(pair):
     return PRICES.get(pair)
+
+def convertToMid(ccy1, ccy2, amount):
+    #Convert to ccy1 from ccy2 amount using the mid price
+    pair, base, term = marketConvention(ccy1, ccy2)
+    bid, ask = getPrice(pair)
+    if ccy1 == term:
+        return amount * ((bid + ask)/2)
+    elif ccy1 == base:
+        return amount / ((bid + ask)/2)
+
+def convertTo(ccy1, ccy2, amount):
+    #convert to ccy1 from ccy2 amount, using the bid or ask
+    pair, base, term = marketConvention(ccy1, ccy2)
+    bid, ask = getPrice(pair)
+    if ccy1 == term:     #ccy2 and amount are base, if +ve we are buying
+        if (amount > 0): return -1 * amount * ask
+        else: return -1 * amount* bid
+    elif ccy1 == base:   #ccy2 and amount are term, if +ve we are selling
+        if (amount > 0): return -1 * amount / bid
+        else: return -1 * amount / ask
+
 
 def printPrices():
     pairs = PRICES.keys()

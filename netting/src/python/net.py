@@ -2,16 +2,16 @@ import random, math
 
 from orders import FXOrder, Side
 from accounts import Accounts
-from prices import getPrice, printPrices
+from prices import getPrice, printPrices, convertTo, convertToMid
 from convention import marketConvention
 
 random.seed(24)
 
-#ACCOUNTS = [('Account A','USD'),('Account B','USD'),('Account C','USD'),('Account D','USD')]
-#CURRENCIES = ['AUD','CAD','CHF','CNH', 'EUR','GBP','HKD','JPY','NZD','PLN','USD']
+ACCOUNTS = [('Account A','USD'),('Account B','USD'),('Account C','USD'),('Account D','USD')]
+CURRENCIES = ['AUD','CAD','CHF','CNH', 'EUR','GBP','HKD','JPY','NZD','PLN','USD']
 
-ACCOUNTS = [('Account A','USD'),('Account B','EUR'),('Account C','USD'),('Account D','USD'),('Account E','EUR')]
-CURRENCIES = ['AUD','CAD','CHF','EUR','GBP','HKD','JPY','NZD','PLN','USD']
+#ACCOUNTS = [('Account A','USD'),('Account B','EUR'),('Account C','USD'),('Account D','USD'),('Account E','EUR')]
+#CURRENCIES = ['AUD','CAD','CHF','EUR','GBP','HKD','JPY','NZD','PLN','USD']
 
 
 def initAccounts():
@@ -33,26 +33,6 @@ def initAccounts():
 
 def roundup(amount):
     return int(math.ceil(amount/1000000.0)) * 1000000
-
-def convertToMid(ccy1, ccy2, amount):
-    #Convert to ccy1 from ccy2 amount using the mid price
-    pair, base, term = marketConvention(ccy1, ccy2)
-    bid, ask = getPrice(pair)
-    if ccy1 == term:
-        return amount * ((bid + ask)/2)
-    elif ccy1 == base:
-        return amount / ((bid + ask)/2)
-
-def convertTo(ccy1, ccy2, amount):
-    #convert to ccy1 from ccy2 amount, using the bid or ask
-    pair, base, term = marketConvention(ccy1, ccy2)
-    bid, ask = getPrice(pair)
-    if ccy1 == term:     #ccy2 and amount are base, if +ve we are buying
-        if (amount > 0): return -1 * amount * ask
-        else: return -1 * amount* bid
-    elif ccy1 == base:   #ccy2 and amount are term, if +ve we are selling
-        if (amount > 0): return -1 * amount / bid
-        else: return -1 * amount / ask
 
 def sortedKeys(dict):
     keys = dict.keys()
@@ -87,34 +67,23 @@ def getTotals(accounts):
 
         buyAmount = aggregatedOrders[pair][0].dealtAmount
         sellAmount = aggregatedOrders[pair][1].dealtAmount
+
         if (buyAmount >= sellAmount):
             order.side = Side.BUY
-            order.price = ask
-            order.dealtAmount = aggregatedOrders[pair][0].dealtAmount - aggregatedOrders[pair][1].dealtAmount
-
+            order.setAmounts(aggregatedOrders[pair][0].dealtAmount - aggregatedOrders[pair][1].dealtAmount)
             dealtSaved = aggregatedOrders[pair][1].dealtAmount
             if order.dealtCurrency == order.base:
-                order.baseAmount = order.dealtAmount
-                order.termAmount = order.dealtAmount * order.price
                 order.addSaving(dealtSaved*ask - dealtSaved*bid)
             else:
-                order.baseAmount = order.dealtAmount / order.price
-                order.termAmount = order.dealtAmount
                 order.addSaving(dealtSaved/bid - dealtSaved/ask)
 
         else:
             order.side = Side.SELL
-            order.price = bid
-            order.dealtAmount = aggregatedOrders[pair][1].dealtAmount - aggregatedOrders[pair][0].dealtAmount
-
+            order.setAmounts(aggregatedOrders[pair][1].dealtAmount - aggregatedOrders[pair][0].dealtAmount)
             dealtSaved = aggregatedOrders[pair][0].dealtAmount
             if order.dealtCurrency == order.base:
-                order.baseAmount = order.dealtAmount
-                order.termAmount = order.dealtAmount * order.price
                 order.addSaving(dealtSaved*ask - dealtSaved*bid)
             else:
-                order.baseAmount = order.dealtAmount / order.price
-                order.termAmount = order.dealtAmount
                 order.addSaving(dealtSaved/bid - dealtSaved/ask)
 
         nettedOrders.append(order)
