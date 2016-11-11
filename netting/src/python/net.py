@@ -7,11 +7,11 @@ from convention import marketConvention
 
 random.seed(24)
 
-ACCOUNTS = [('Account A','USD'),('Account B','USD'),('Account C','USD'),('Account D','USD')]
-CURRENCIES = ['AUD','CAD','CHF','CNH', 'EUR','GBP','HKD','JPY','NZD','PLN','USD']
+#ACCOUNTS = [('Account A','USD'),('Account B','USD'),('Account C','USD'),('Account D','USD')]
+#CURRENCIES = ['AUD','CAD','CHF','CNH', 'EUR','GBP','HKD','JPY','NZD','PLN','USD']
 
-#ACCOUNTS = [('Account A','USD'),('Account B','EUR'),('Account C','USD'),('Account D','USD'),('Account E','EUR')]
-#CURRENCIES = ['AUD','CAD','CHF','EUR','GBP','HKD','JPY','NZD','PLN','USD']
+ACCOUNTS = [('Account A','USD'),('Account B','EUR'),('Account C','USD'),('Account D','USD'),('Account E','EUR')]
+CURRENCIES = ['AUD','CAD','CHF','EUR','GBP','HKD','JPY','NZD','PLN','USD']
 
 
 def initAccounts():
