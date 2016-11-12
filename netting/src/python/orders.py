@@ -90,7 +90,7 @@ class FXOrder:
         return self.side == Side.BUY
 
     def addSaving(self, saving):
-        self.saving = saving
+        self.saving += saving
 
     def getSaving(self):
         return self.saving
