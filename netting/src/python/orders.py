@@ -124,7 +124,7 @@ class FXOrder:
         self.baseAmount -= order.baseAmount
         self.termAmount = self.baseAmount * self.price
 
-        dealtSaved = order.baseAmount if order.base == self.dealtCurrency else order.termAmount
+        dealtSaved = order.baseAmount if self.base == self.dealtCurrency else order.termAmount
         self.dealtAmount -= dealtSaved
 
         bid, ask = getPrice(self.base+self.term)
@@ -132,9 +132,9 @@ class FXOrder:
             self.setSaving(dealtSaved*ask - dealtSaved*bid)
         else:
             self.setSaving(dealtSaved/bid - dealtSaved/ask)
+        self.setSaving(order.getSaving())
 
     def __str__(self):
-        if self.internal: pass
         internal = "*" if self.internal else ""
         fstring = "[%-10s]%1s %-4s  %s%s  %12.2f @ %-10.5f %10d %s dealt "
         if self.dealtCurrency == 'JPY': fstring = "[%-10s]%1s %-4s  %s%s  %12.2f @ %-10.2f %10d %s dealt "

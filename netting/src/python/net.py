@@ -170,17 +170,17 @@ if __name__ == "__main__":
                 contraCurrency = order.base if order.dealtCurrency == order.term else order.term
                 if (contraCurrency != 'USD'):
                     savedUSD = convertToMid('USD', contraCurrency, saved)
-                    print "%s (saving %8.2f %s, %8.2f USD)" % (order.__str__(), saved, contraCurrency, savedUSD)
+                    if (not order.internal):
+                        print "%s (saving %8.2f %s, %8.2f USD)" % (order.__str__(), saved, contraCurrency, savedUSD)
                     saved = savedUSD
                 else:
-                    pass
-                    print "%s (saving %8.2f %s)" % (order.__str__(), saved, contraCurrency)
+                    if (not order.internal):
+                        print "%s (saving %8.2f %s)" % (order.__str__(), saved, contraCurrency)
                 totalSaved += saved
 
         print "\nTotal USD amount saved across the accounts (using individual trades) %.2f" % totalSaved
 
         print "\nTotal USD amount saved across the accounts (using net account flow) %.2f" % (nettedCCYTotal2 - accountCCYTotal1)
-
 
         total += totalSaved
         count += 1
