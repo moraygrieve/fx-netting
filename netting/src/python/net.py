@@ -43,7 +43,7 @@ def sortedKeys(dict):
 def getTotals(accounts):
     aggregatedOrders = {}
     nettedOrders = {}
-    internalOrders = {}
+    shadowOrders = {}
 
     #aggregate orders within account of the same base (add buy and sell side)
     for ccy in accounts.currencies:
@@ -98,7 +98,7 @@ def getTotals(accounts):
 
             nettedOrders[base][pair] = order
 
-    #net across accountsm(assume EUR and USD for now)
+    #net across accounts (assume EUR and USD for now)
     for pair in sortedKeys(nettedOrders['USD']):
         order1 = nettedOrders['USD'][pair]
 
@@ -113,14 +113,23 @@ def getTotals(accounts):
                     buyOrder.net(sellOrder)
                     sellOrder.setInternal()
 
-                    shadow = copy.deepcopy(sellOrder)
-                    shadow.side = Side.SELL
-
+                    shadow = FXOrder.newBuyOrder("Shadow", buyOrder.base, buyOrder.term, buyOrder.dealtCurrency)
+                    dealtAmount = sellOrder.baseAmount if sellOrder.dealtCurrency != sellOrder.base else sellOrder.termAmount
+                    shadow.setAmounts(dealtAmount, True)
+                    shadow.setInternal()
                 else:
                     sellOrder.net(buyOrder)
                     buyOrder.setInternal()
 
-    return nettedOrders
+                    shadow = FXOrder.newSellOrder("Shadow", sellOrder.base, sellOrder.term, sellOrder.dealtCurrency)
+                    dealtAmount = buyOrder.baseAmount if buyOrder.dealtCurrency != buyOrder.base else buyOrder.termAmount
+                    shadow.setAmounts(dealtAmount, True)
+                    shadow.setInternal()
+
+                if not shadowOrders.has_key(shadow.contraCurrency()): shadowOrders[shadow.contraCurrency()]={}
+                shadowOrders[shadow.contraCurrency()][pair] = shadow
+
+    return nettedOrders,shadowOrders
 
 if __name__ == "__main__":
     total = 0
@@ -131,7 +140,7 @@ if __name__ == "__main__":
         printPrices()
         accounts.printAccountTargets()
         accounts.printAccountOrders()
-        netOrders = getTotals(accounts)
+        netOrders, shadowOrders = getTotals(accounts)
 
         accountCCYTotal1 = 0
         for order in accounts.getAccountOrders():
@@ -143,6 +152,12 @@ if __name__ == "__main__":
         for base in sortedKeys(netOrders):
             for key in sortedKeys(netOrders[base]):
                 order = netOrders[base][key]
+                contraAmount = order.contraAmount() if base=='USD' else convertToMid('USD', base, order.contraAmount())
+                nettedCCYTotal2 += contraAmount
+
+        for base in sortedKeys(shadowOrders):
+            for key in sortedKeys(shadowOrders[base]):
+                order = shadowOrders[base][key]
                 contraAmount = order.contraAmount() if base=='USD' else convertToMid('USD', base, order.contraAmount())
                 nettedCCYTotal2 += contraAmount
 

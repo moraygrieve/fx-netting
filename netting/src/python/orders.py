@@ -76,9 +76,10 @@ class FXOrder:
         self.saving = 0
         self.internal = False
 
-    def setAmounts(self, dealtAmount):
+    def setAmounts(self, dealtAmount, priceFavor=False):
         bid, ask = getPrice(self.base+self.term)
-        self.price = ask if self.isBuy() else bid
+        if priceFavor: self.price = bid if self.isBuy() else ask
+        else: self.price = ask if self.isBuy() else bid
         self.dealtAmount = dealtAmount
         if (self.base == self.dealtCurrency):
             self.baseAmount = dealtAmount
@@ -109,6 +110,7 @@ class FXOrder:
         return amount
 
     def aggregate(self, order):
+        #aggregating orders of same pair, same dealt, same side
         self.base = order.base
         self.term = order.term
         self.side = order.side
@@ -118,8 +120,10 @@ class FXOrder:
         self.dealtAmount += order.dealtAmount
 
     def net(self, order):
+        #netting an order of same pair, against one of the opposite side
         self.baseAmount -= order.baseAmount
-        self.termAmount -= order.termAmount
+        self.termAmount = self.baseAmount * self.price
+
         dealtSaved = order.baseAmount if order.base == self.dealtCurrency else order.termAmount
         self.dealtAmount -= dealtSaved
 
