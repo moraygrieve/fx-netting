@@ -1,4 +1,4 @@
-import random, math
+import random, math, copy
 
 from orders import FXOrder, Side
 from accounts import Accounts
@@ -43,6 +43,7 @@ def sortedKeys(dict):
 def getTotals(accounts):
     aggregatedOrders = {}
     nettedOrders = {}
+    internalOrders = {}
 
     #aggregate orders within account of the same base (add buy and sell side)
     for ccy in accounts.currencies:
@@ -58,8 +59,8 @@ def getTotals(accounts):
                     sell = FXOrder.newSellOrder("Aggregated", base, term, ccy)
                     aggregatedOrders[account.getBase()][pair] = (buy, sell)
                 order = account.getOrders()[pair]
-                if order.isBuy():aggregatedOrders[account.getBase()][pair][0].include(order)
-                else: aggregatedOrders[account.getBase()][pair][1].include(order)
+                if order.isBuy():aggregatedOrders[account.getBase()][pair][0].aggregate(order)
+                else: aggregatedOrders[account.getBase()][pair][1].aggregate(order)
 
     #net aggregates within accounts of the same base (add the buy and sell)
     for base in sortedKeys(aggregatedOrders):
@@ -82,26 +83,42 @@ def getTotals(accounts):
                 order.setAmounts(aggregatedOrders[base][pair][0].dealtAmount - aggregatedOrders[base][pair][1].dealtAmount)
                 dealtSaved = aggregatedOrders[base][pair][1].dealtAmount
                 if order.dealtCurrency == order.base:
-                    order.addSaving(dealtSaved*ask - dealtSaved*bid)
+                    order.setSaving(dealtSaved*ask - dealtSaved*bid)
                 else:
-                    order.addSaving(dealtSaved/bid - dealtSaved/ask)
+                    order.setSaving(dealtSaved/bid - dealtSaved/ask)
 
             else:
                 order.side = Side.SELL
                 order.setAmounts(aggregatedOrders[base][pair][1].dealtAmount - aggregatedOrders[base][pair][0].dealtAmount)
                 dealtSaved = aggregatedOrders[base][pair][0].dealtAmount
                 if order.dealtCurrency == order.base:
-                    order.addSaving(dealtSaved*ask - dealtSaved*bid)
+                    order.setSaving(dealtSaved*ask - dealtSaved*bid)
                 else:
-                    order.addSaving(dealtSaved/bid - dealtSaved/ask)
+                    order.setSaving(dealtSaved/bid - dealtSaved/ask)
 
             nettedOrders[base][pair] = order
 
-    #net across accounts
-    for base in nettedOrders:
-        for key in sortedKeys(nettedOrders[base]):pass
+    #net across accountsm(assume EUR and USD for now)
+    for pair in sortedKeys(nettedOrders['USD']):
+        order1 = nettedOrders['USD'][pair]
 
-    #aggregate across the accounts (e.g. EUR and USD base, their will be a EURUSD aggregation)
+        if nettedOrders['EUR'].has_key(pair):
+            order2 = nettedOrders['EUR'][pair]
+
+            if order1.side != order2.side:
+                buyOrder = order1 if order1.isBuy() else order2
+                sellOrder = order2 if order1.isBuy() else order1
+
+                if (buyOrder.baseAmount >= sellOrder.baseAmount):
+                    buyOrder.net(sellOrder)
+                    sellOrder.setInternal()
+
+                    shadow = copy.deepcopy(sellOrder)
+                    shadow.side = Side.SELL
+
+                else:
+                    sellOrder.net(buyOrder)
+                    buyOrder.setInternal()
 
     return nettedOrders
 

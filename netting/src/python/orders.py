@@ -74,6 +74,7 @@ class FXOrder:
         self.termAmount = 0
         self.dealtAmount = 0
         self.saving = 0
+        self.internal = False
 
     def setAmounts(self, dealtAmount):
         bid, ask = getPrice(self.base+self.term)
@@ -89,11 +90,14 @@ class FXOrder:
     def isBuy(self):
         return self.side == Side.BUY
 
-    def addSaving(self, saving):
+    def setSaving(self, saving):
         self.saving += saving
 
     def getSaving(self):
         return self.saving
+
+    def setInternal(self):
+        self.internal = True
 
     def contraCurrency(self):
         return self.base if self.dealtCurrency == self.term else self.term
@@ -104,24 +108,34 @@ class FXOrder:
         if not self.isBuy() and self.term == self.dealtCurrency: return -1.0 * amount
         return amount
 
-    def include(self, order):
+    def aggregate(self, order):
         self.base = order.base
         self.term = order.term
         self.side = order.side
         self.price = order.price
         self.baseAmount += order.baseAmount
         self.termAmount += order.termAmount
-        if (order.dealtCurrency == self.dealtCurrency):
-            self.dealtAmount += order.dealtAmount
+        self.dealtAmount += order.dealtAmount
+
+    def net(self, order):
+        self.baseAmount -= order.baseAmount
+        self.termAmount -= order.termAmount
+        dealtSaved = order.baseAmount if order.base == self.dealtCurrency else order.termAmount
+        self.dealtAmount -= dealtSaved
+
+        bid, ask = getPrice(self.base+self.term)
+        if self.dealtCurrency == self.base:
+            self.setSaving(dealtSaved*ask - dealtSaved*bid)
         else:
-            contraAmount = order.baseAmount if order.dealtCurrency == order.term else order.termAmount
-            self.dealtAmount += contraAmount
+            self.setSaving(dealtSaved/bid - dealtSaved/ask)
 
     def __str__(self):
-        fstring = "[%-10s] %-4s  %s%s  %12.2f @ %-10.5f %10d %s dealt "
-        if self.dealtCurrency == 'JPY': fstring = "[%-10s] %-4s  %s%s  %12.2f @ %-10.2f %10d %s dealt "
+        if self.internal: pass
+        internal = "*" if self.internal else ""
+        fstring = "[%-10s]%1s %-4s  %s%s  %12.2f @ %-10.5f %10d %s dealt "
+        if self.dealtCurrency == 'JPY': fstring = "[%-10s]%1s %-4s  %s%s  %12.2f @ %-10.2f %10d %s dealt "
         return fstring % \
-               (self.account, self.side, self.base, self.term, self.baseAmount, self.price, self.dealtAmount, self.dealtCurrency)
+               (self.account, internal, self.side, self.base, self.term, self.baseAmount, self.price, self.dealtAmount, self.dealtCurrency)
 
 
 if __name__ == "__main__":
