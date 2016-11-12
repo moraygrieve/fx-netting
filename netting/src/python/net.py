@@ -1,6 +1,6 @@
 import random, math, copy
 
-from orders import FXOrder, Side
+from orders import FXOrder, CrossFXOrder, Side
 from accounts import Accounts
 from prices import getPrice, printPrices, convertTo, convertToMid
 from convention import marketConvention
@@ -59,6 +59,7 @@ def getTotals(accounts):
                     sell = FXOrder.newSellOrder("Aggregated", base, term, ccy)
                     aggregatedOrders[account.getBase()][pair] = (buy, sell)
                 order = account.getOrders()[pair]
+
                 if order.isBuy():aggregatedOrders[account.getBase()][pair][0].aggregate(order)
                 else: aggregatedOrders[account.getBase()][pair][1].aggregate(order)
 
@@ -97,6 +98,17 @@ def getTotals(accounts):
                     order.setSaving(dealtSaved/bid - dealtSaved/ask)
 
             nettedOrders[base][pair] = order
+
+    #split the EUR orders
+    for pair in sortedKeys(nettedOrders['EUR']):
+        if pair == 'EURUSD': continue
+        cross = CrossFXOrder(nettedOrders['EUR'][pair])
+        cross.split('USD')
+
+        print
+        print nettedOrders['EUR'][pair]
+        print cross.left
+        print cross.right
 
     #net across accounts (assume EUR and USD for now)
     for pair in sortedKeys(nettedOrders['USD']):

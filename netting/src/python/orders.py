@@ -1,3 +1,5 @@
+import math
+
 from convention import marketConvention
 from prices import getPrice
 
@@ -31,14 +33,16 @@ class CrossFXOrder:
 
         self.left = leftOp(self.order.account, base1, term1, self.order.dealtCurrency if self.order.dealtCurrency in pair1 else splitCcy)
         self.right = rightOp(self.order.account, base2, term2, self.order.dealtCurrency if self.order.dealtCurrency in pair2 else splitCcy)
+        self.left.account = "Split L"
+        self.right.account = "Split R"
 
         #set the amounts
-        if (self.left.dealtCurrency == order.dealtCurrency):
-            self.left.setAmounts(order.dealtAmount)
-            self.right.setAmounts(self.left.contraAmount())
+        if (self.left.dealtCurrency == self.order.dealtCurrency):
+            self.left.setAmounts(self.order.dealtAmount)
+            self.right.setAmounts(math.fabs(self.left.contraAmount()))
         else:
-            self.right.setAmounts(order.dealtAmount)
-            self.left.setAmounts(self.right.contraAmount())
+            self.right.setAmounts(self.order.dealtAmount)
+            self.left.setAmounts(math.fabs(self.right.contraAmount()))
 
 
 class FXOrder:
