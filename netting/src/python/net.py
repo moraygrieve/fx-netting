@@ -6,13 +6,14 @@ from prices import getPrice, printPrices, convertTo, convertToMid
 from convention import marketConvention
 
 #random.seed(4)  EUR cancel out completely
-random.seed(120)
+#random.seed(120)
+random.seed(24)
 
-#ACCOUNTS = [('Account A','USD'),('Account B','USD'),('Account C','USD'),('Account D','USD')]
-#CURRENCIES = ['AUD','CAD','CHF','CNH', 'EUR','GBP','HKD','JPY','NZD','PLN','USD']
+ACCOUNTS = [('Account A','USD'),('Account B','USD'),('Account C','USD'),('Account D','USD')]
+CURRENCIES = ['AUD','CAD','CHF','CNH', 'EUR','GBP','HKD','JPY','NZD','PLN','USD']
 
-ACCOUNTS = [('Account A','USD'),('Account B','EUR'),('Account C','USD'),('Account D','USD'),('Account E','EUR')]
-CURRENCIES = ['AUD','CAD','CHF','GBP','EUR','HKD','JPY','NZD','PLN','USD']
+#ACCOUNTS = [('Account A','USD'),('Account B','EUR'),('Account C','USD'),('Account D','USD'),('Account E','EUR')]
+#CURRENCIES = ['AUD','CAD','CHF','GBP','EUR','HKD','JPY','NZD','PLN','USD']
 
 
 def initAccounts():
@@ -75,8 +76,8 @@ def getTotals(accounts):
                 order = account.getOrders()[pair]
 
                 if not aggregatedOrders[account.getBase()].has_key(pair):
-                    buy = FXOrder.newBuyOrder("Aggregated", base, term, ccy)
-                    sell = FXOrder.newSellOrder("Aggregated", base, term, ccy)
+                    buy = FXOrder.newBuyOrder("Aggregated", base, term)
+                    sell = FXOrder.newSellOrder("Aggregated", base, term)
                     aggregatedOrders[account.getBase()][pair] = (buy, sell)
 
                 if order.isBuy():aggregatedOrders[account.getBase()][pair][0].aggregate(order)
@@ -87,48 +88,39 @@ def getTotals(accounts):
         nettedOrders[base] = {}
 
         for pair in sortedKeys(aggregatedOrders[base]):
-            bid, ask = getPrice(pair)
+            buyOrder = aggregatedOrders[base][pair][0]
+            sellOrder = aggregatedOrders[base][pair][1]
 
-            order = FXOrder()
-            order.account = "Netted"
-            order.base = aggregatedOrders[base][pair][0].base
-            order.term = aggregatedOrders[base][pair][0].term
-            order.dealtCurrency = aggregatedOrders[base][pair][0].dealtCurrency
-
-            buyAmount = aggregatedOrders[base][pair][0].dealtAmount
-            sellAmount = aggregatedOrders[base][pair][1].dealtAmount
-
-            if (buyAmount >= sellAmount):
-                order.side = Side.BUY
-                order.setAmounts(aggregatedOrders[base][pair][0].dealtAmount - aggregatedOrders[base][pair][1].dealtAmount)
-                dealtSaved = aggregatedOrders[base][pair][1].dealtAmount
-                if order.dealtCurrency == order.base:
-                    order.setSaving(dealtSaved*ask - dealtSaved*bid)
-                else:
-                    order.setSaving(dealtSaved/bid - dealtSaved/ask)
-
+            if (buyOrder.baseAmount >= sellOrder.baseAmount):
+                order = copy.deepcopy(buyOrder)
+                order.account = "Netted"
+                order.net(order.base if base == order.term else order.term, sellOrder)
             else:
-                order.side = Side.SELL
-                order.setAmounts(aggregatedOrders[base][pair][1].dealtAmount - aggregatedOrders[base][pair][0].dealtAmount)
-                dealtSaved = aggregatedOrders[base][pair][0].dealtAmount
-                if order.dealtCurrency == order.base:
-                    order.setSaving(dealtSaved*ask - dealtSaved*bid)
-                else:
-                    order.setSaving(dealtSaved/bid - dealtSaved/ask)
+                order = copy.deepcopy(sellOrder)
+                order.account = "Netted"
+                order.net(order.base if base == order.term else order.term, buyOrder)
 
             nettedOrders[base][pair] = order
-            print "Condense %s " % order.__str__()
 
     #net across accounts (assume EUR and USD for now)
     for pair in sortedKeys(nettedOrders['USD']):
         order1 = nettedOrders['USD'][pair]
 
-        if nettedOrders['EUR'].has_key(pair):
+        if nettedOrders.has_key('EUR') and nettedOrders['EUR'].has_key(pair):
             order2 = nettedOrders['EUR'][pair]
 
             if order1.side != order2.side:
                 buyOrder = order1 if order1.isBuy() else order2
                 sellOrder = order2 if order1.isBuy() else order1
+
+                if (buyOrder.baseAmount >= sellOrder.baseAmount):
+                    order = copy.deepcopy(buyOrder)
+                    order.net(sellOrder.term if sellOrder.base == base else sellOrder.base, sellOrder)
+                else:
+                    order = copy.deepcopy(sellOrder)
+                    order.net(buyOrder.term if buyOrder.base == base else buyOrder.base, buyOrder)
+
+
 
                 if (buyOrder.baseAmount >= sellOrder.baseAmount):
                     buyOrder.net(sellOrder)
@@ -156,13 +148,14 @@ if __name__ == "__main__":
     total = 0
     count = 0
     totals = []
-    for i in range(0,1):
-        accounts = initAccounts()
-        printPrices()
-        accounts.printAccountTargets()
-        accounts.printAccountOrders()
-        netOrders, shadowOrders = getTotals(accounts)
 
+    accounts = initAccounts()
+    printPrices()
+    accounts.printAccountTargets()
+    accounts.printAccountOrders()
+    netOrders, shadowOrders = getTotals(accounts)
+
+    if False:
         accountCCYTotal1 = 0
         for order in accounts.getAccountOrders():
             contraCCy = order.contraCurrency()
@@ -182,35 +175,15 @@ if __name__ == "__main__":
                 contraAmount = order.contraAmount() if base=='USD' else convertToMid('USD', base, order.contraAmount())
                 nettedCCYTotal2 += contraAmount
 
-        print ""
-        totalSaved = 0
-        for base in netOrders:
-            for key in sortedKeys(netOrders[base]):
-                order = netOrders[base][key]
-                saved = order.getSaving()
-                contraCurrency = order.base if order.dealtCurrency == order.term else order.term
-                if (contraCurrency != 'USD'):
-                    savedUSD = convertToMid('USD', contraCurrency, saved)
-                    if (not order.internal):
-                        print "%s (saving %8.2f %s, %8.2f USD)" % (order.__str__(), saved, contraCurrency, savedUSD)
-                    saved = savedUSD
-                else:
-                    if (not order.internal):
-                        print "%s (saving %8.2f %s)" % (order.__str__(), saved, contraCurrency)
-                totalSaved += saved
+    print ""
+    totalSaved = 0
+    for base in netOrders:
+        for key in sortedKeys(netOrders[base]):
+            order = netOrders[base][key]
+            if (not order.internal):print "%s (saving %8.2f USD)" % (order.__str__(), order.getSaving())
+            totalSaved += order.getSaving()
 
-        print "\nTotal USD amount saved across the accounts (using individual trades) %.2f" % totalSaved
+    print "\nTotal USD amount saved across the accounts (using individual trades) %.2f" % totalSaved
+    #print "\nTotal USD amount saved across the accounts (using net account flow) %.2f" % (nettedCCYTotal2 - accountCCYTotal1)
 
-        print "\nTotal USD amount saved across the accounts (using net account flow) %.2f" % (nettedCCYTotal2 - accountCCYTotal1)
-
-        total += totalSaved
-        count += 1
-        totals.append(saved)
-    print "Average = %f" % (total /count)
-
-    #totals.sort()
-    #hist, bin_edges = numpy.histogram(totals, 100)
-    #for i in range(0, len(hist)):
-    #    print int(bin_edges[i]), hist[i]
-    #print totals
 

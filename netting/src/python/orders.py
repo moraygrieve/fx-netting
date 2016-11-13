@@ -1,7 +1,5 @@
-import math
-
 from convention import marketConvention
-from prices import getPrice
+from prices import getPrice, convertToMid
 
 class Side:
     BUY = "BUY"
@@ -14,7 +12,7 @@ class CrossFXOrder:
         self.left = None
         self.right = None
 
-    def split(self, splitCcy):
+    def split(self, splitCcy, primaryCcy):
         pair1, base1, term1 = marketConvention(self.order.base, splitCcy)
         pair2, base2, term2 = marketConvention(self.order.term, splitCcy)
 
@@ -31,40 +29,40 @@ class CrossFXOrder:
             if self.order.term == term2: rightOp = FXOrder.newSellOrder
             else: rightOp = FXOrder.newBuyOrder
 
-        self.left = leftOp(self.order.account, base1, term1, self.order.dealtCurrency if self.order.dealtCurrency in pair1 else splitCcy)
-        self.right = rightOp(self.order.account, base2, term2, self.order.dealtCurrency if self.order.dealtCurrency in pair2 else splitCcy)
-        self.left.account = "Split L"
-        self.right.account = "Split R"
+        self.left = leftOp(self.order.account, base1, term1)
+        self.right = rightOp(self.order.account, base2, term2)
+        self.left.account += "-SL"
+        self.right.account += "-SR"
 
-        #set the amounts
-        if (self.left.dealtCurrency == self.order.dealtCurrency):
-            self.left.setAmounts(self.order.dealtAmount)
-            self.right.setAmounts(math.fabs(self.left.contraAmount()))
+        #set the amounts (primaryCcy is the one kept constant)
+        if (primaryCcy == self.order.base):
+            self.left.setAmounts(self.order.base, self.order.baseAmount)
+            self.right.setAmounts(splitCcy, self.left.baseAmount if self.left.base == splitCcy else self.left.termAmount)
         else:
-            self.right.setAmounts(self.order.dealtAmount)
-            self.left.setAmounts(math.fabs(self.right.contraAmount()))
+            self.right.setAmounts(self.order.term, self.order.termAmount)
+            self.left.setAmounts(splitCcy, self.right.baseAmount if self.right.base == splitCcy else self.right.termAmount)
 
 
 class FXOrder:
 
     @staticmethod
-    def newBuyOrder(account, base, term, dealtCurrency):
+    def newBuyOrder(account, base, term):
         order = FXOrder()
         order.account = account
         order.base = base
         order.term = term
+        order.pair = base+term
         order.side = Side.BUY
-        order.dealtCurrency = dealtCurrency
         return order
 
     @staticmethod
-    def newSellOrder(account, base, term, dealtCurrency):
+    def newSellOrder(account, base, term):
         order = FXOrder()
         order.account = account
         order.base = base
         order.term = term
+        order.pair = base+term
         order.side = Side.SELL
-        order.dealtCurrency = dealtCurrency
         return order
 
     def __init__(self):
@@ -72,25 +70,22 @@ class FXOrder:
         self.base = None
         self.term = None
         self.side = None
-        self.dealtCurrency = None
         self.price = 0.0
         self.baseAmount = 0
         self.termAmount = 0
-        self.dealtAmount = 0
         self.saving = 0
         self.internal = False
 
-    def setAmounts(self, dealtAmount, priceFavor=False):
-        bid, ask = getPrice(self.base+self.term)
+    def setAmounts(self, ccy, amount, priceFavor=False):
+        bid, ask = getPrice(self.pair)
         if priceFavor: self.price = bid if self.isBuy() else ask
         else: self.price = ask if self.isBuy() else bid
-        self.dealtAmount = dealtAmount
-        if (self.base == self.dealtCurrency):
-            self.baseAmount = dealtAmount
-            self.termAmount = dealtAmount * self.price
+        if (self.base == ccy):
+            self.baseAmount = amount
+            self.termAmount = amount * self.price
         else:
-            self.baseAmount = dealtAmount / self.price
-            self.termAmount = dealtAmount
+            self.baseAmount = amount / self.price
+            self.termAmount = amount
 
     def isBuy(self):
         return self.side == Side.BUY
@@ -104,54 +99,44 @@ class FXOrder:
     def setInternal(self):
         self.internal = True
 
-    def contraCurrency(self):
-        return self.base if self.dealtCurrency == self.term else self.term
-
-    def contraAmount(self):
-        amount = self.baseAmount if self.dealtCurrency == self.term else self.termAmount
-        if self.isBuy() and self.base == self.dealtCurrency: return -1.0 * amount
-        if not self.isBuy() and self.term == self.dealtCurrency: return -1.0 * amount
-        return amount
-
     def aggregate(self, order):
-        #aggregating orders of same pair, same dealt, same side
+        #aggregating orders of same pair, same price, same side
         self.base = order.base
         self.term = order.term
         self.side = order.side
         self.price = order.price
         self.baseAmount += order.baseAmount
         self.termAmount += order.termAmount
-        self.dealtAmount += order.dealtAmount
 
-    def net(self, order):
-        #netting an order of same pair, against one of the opposite side
-        self.baseAmount -= order.baseAmount
-        self.termAmount = self.baseAmount * self.price
-
-        dealtSaved = order.baseAmount if self.base == self.dealtCurrency else order.termAmount
-        self.dealtAmount -= dealtSaved
-
-        bid, ask = getPrice(self.base+self.term)
-        if self.dealtCurrency == self.base:
-            self.setSaving(dealtSaved*ask - dealtSaved*bid)
+    def net(self, ccy, order):
+        #netting order against this, where we save in opposite currency to ccy e.g. USD in GBPUSD
+        bid, ask = getPrice(self.pair)
+        if ccy == self.base:
+            self.setAmounts(self.base, self.baseAmount - order.baseAmount)
+            saving = order.baseAmount*ask - order.baseAmount*bid
+            if self.term != 'USD': convertToMid('USD', ccy, saving)
+            else: self.setSaving(saving)
         else:
-            self.setSaving(dealtSaved/bid - dealtSaved/ask)
-        self.setSaving(order.getSaving())
+            self.setAmounts(self.term, self.termAmount - order.termAmount)
+            saving = order.termAmount/bid - order.termAmount/ask
+            if self.base != 'USD':convertToMid('USD', ccy, saving)
+            else: self.setSaving(saving)
+
 
     def __str__(self):
         internal = "*" if self.internal else ""
-        fstring = "[%-10s]%1s %-4s  %s%s  %12.2f @ %-10.5f %10d %s dealt "
-        if self.dealtCurrency == 'JPY': fstring = "[%-10s]%1s %-4s  %s%s  %12.2f @ %-10.2f %10d %s dealt "
+        fstring = "[%-10s]%1s %-4s  %s%s  %12.2f @ %-10.5f (contra %12.2f) "
+        if self.base == 'JPY' or self.term == 'JPY': fstring = "[%-10s]%1s %-4s  %s%s  %12.2f @ %-10.2f (contra %12.2f) "
         return fstring % \
-               (self.account, internal, self.side, self.base, self.term, self.baseAmount, self.price, self.dealtAmount, self.dealtCurrency)
+               (self.account, internal, self.side, self.base, self.term, self.baseAmount, self.price, self.termAmount)
 
 
 if __name__ == "__main__":
-    order = FXOrder.newSellOrder('A1','EUR','GBP','GBP')
-    order.setAmounts(1000000)
+    order = FXOrder.newSellOrder('A1','EUR','GBP')
+    order.setAmounts('GBP', 1000000)
     print order
 
     split = CrossFXOrder(order)
-    split.split('USD')
+    split.split('USD','GBP')
     print split.left
     print split.right
