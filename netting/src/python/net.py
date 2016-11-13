@@ -1,4 +1,4 @@
-import random, math, copy
+import sys, random, math, copy
 
 from orders import FXOrder, CrossFXOrder, Side
 from accounts import Accounts
@@ -40,6 +40,24 @@ def sortedKeys(dict):
     keys.sort()
     return keys
 
+
+def doSplits(accounts):
+    splitOrders = {}
+    for name in accounts.getAccountNames():
+        account = accounts.getAccount(name)
+        splitOrders[account.getBase()] = []
+
+        for pair in sortedKeys(account.getOrders()):
+            order =  account.getOrders()[pair]
+            if account.getBase() == 'USD':
+                splitOrders[account.getBase()].append(order)
+            if account.getBase() == 'EUR' and pair != 'EURUSD':
+                cross = CrossFXOrder(order)
+                cross.split('USD')
+                splitOrders[account.getBase()].append(cross.left)
+                splitOrders[account.getBase()].append(cross.right)
+
+
 def getTotals(accounts):
     aggregatedOrders = {}
     nettedOrders = {}
@@ -56,35 +74,13 @@ def getTotals(accounts):
             if account.getOrders().has_key(pair):
                 order = account.getOrders()[pair]
 
-                if False and account.getBase() == 'EUR' and pair != 'EURUSD':
-                    cross = CrossFXOrder(order)
-                    cross.split('USD')
+                if not aggregatedOrders[account.getBase()].has_key(pair):
+                    buy = FXOrder.newBuyOrder("Aggregated", base, term, ccy)
+                    sell = FXOrder.newSellOrder("Aggregated", base, term, ccy)
+                    aggregatedOrders[account.getBase()][pair] = (buy, sell)
 
-                    if not aggregatedOrders[account.getBase()].has_key(cross.left.base+cross.left.term):
-                        buy = FXOrder.newBuyOrder("Aggregated", cross.left.base, cross.left.term, ccy)
-                        sell = FXOrder.newSellOrder("Aggregated", cross.left.base, cross.left.term, ccy)
-                        aggregatedOrders[account.getBase()][cross.left.base+cross.left.term] = (buy, sell)
-
-                    if not aggregatedOrders[account.getBase()].has_key(cross.right.base+cross.right.term):
-                        buy = FXOrder.newBuyOrder("Aggregated", cross.right.base, cross.right.term, ccy)
-                        sell = FXOrder.newSellOrder("Aggregated", cross.right.base, cross.right.term, ccy)
-                        aggregatedOrders[account.getBase()][cross.right.base+cross.right.term] = (buy, sell)
-
-                    if order.isBuy():aggregatedOrders[account.getBase()][cross.left.base+cross.left.term][0].aggregate(cross.left)
-                    else: aggregatedOrders[account.getBase()][cross.left.base+cross.left.term][1].aggregate(cross.left)
-
-                    if order.isBuy():aggregatedOrders[account.getBase()][cross.right.base+cross.right.term][0].aggregate(cross.right)
-                    else: aggregatedOrders[account.getBase()][cross.right.base+cross.right.term][1].aggregate(cross.right)
-
-                else:
-
-                    if not aggregatedOrders[account.getBase()].has_key(pair):
-                        buy = FXOrder.newBuyOrder("Aggregated", base, term, ccy)
-                        sell = FXOrder.newSellOrder("Aggregated", base, term, ccy)
-                        aggregatedOrders[account.getBase()][pair] = (buy, sell)
-
-                    if order.isBuy():aggregatedOrders[account.getBase()][pair][0].aggregate(order)
-                    else: aggregatedOrders[account.getBase()][pair][1].aggregate(order)
+                if order.isBuy():aggregatedOrders[account.getBase()][pair][0].aggregate(order)
+                else: aggregatedOrders[account.getBase()][pair][1].aggregate(order)
 
     #net aggregates within accounts of the same base (add the buy and sell)
     for base in sortedKeys(aggregatedOrders):
