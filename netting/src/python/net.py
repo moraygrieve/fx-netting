@@ -1,4 +1,4 @@
-import sys, random, math, copy
+import random, math, copy
 
 from orders import FXOrder, CrossFXOrder, Side
 from accounts import Accounts
@@ -6,8 +6,11 @@ from prices import getPrice, printPrices, convertTo, convertToMid
 from convention import marketConvention
 
 #random.seed(4)  EUR cancel out completely
-random.seed(120)
 #random.seed(24)
+
+#random.seed(124)
+random.seed(120)
+
 
 #ACCOUNTS = [('Account A','USD'),('Account B','USD'),('Account C','USD'),('Account D','USD')]
 #CURRENCIES = ['AUD','CAD','CHF','CNH', 'EUR','GBP','HKD','JPY','NZD','PLN','USD']
@@ -103,30 +106,38 @@ def getTotals(accounts, split=False):
             nettedOrders[base][pair] = order
 
     #split the EUR orders
-    if split:
+    if split and nettedOrders.has_key('EUR'):
         for pair in sortedKeys(nettedOrders['EUR']):
             nettedOrder = nettedOrders['EUR'][pair]
-            if nettedOrder.pair == 'EURUSD':
+            if nettedOrder.pair in  ['EURUSD']:
                 if not splitOrders.has_key(nettedOrder.pair):
-                    splitOrders['EURUSD'] = copy.deepcopy(nettedOrder)
+                    splitOrders[nettedOrder.pair] = copy.deepcopy(nettedOrder)
                 continue
 
             cross = CrossFXOrder(nettedOrder)
-            cross.split('USD', nettedOrder.base if nettedOrder.base!='EUR' else nettedOrder.term)
+            cross.split('USD', nettedOrder.base if nettedOrder.base != 'EUR' else nettedOrder.term)
 
             for order in [cross.left, cross.right]:
                 if splitOrders.has_key(order.pair):
+
                     if (splitOrders[order.pair].side == order.side):
                         splitOrders[order.pair].aggregate(order)
                     else:
-                        splitOrders[order.pair].net('EUR', order)
+                        if splitOrders[order.pair].baseAmount >= order.baseAmount:
+                            splitOrders[order.pair].net('EUR', order)
+                            splitOrders[order.pair].setSaving(order.getSaving())
+                        else:
+                            order.net('EUR', splitOrders[order.pair])
+                            order.setSaving(splitOrders[order.pair].getSaving())
+                            splitOrders[order.pair] = order
                 else:
                     splitOrders[order.pair] = order
 
         nettedOrders['EUR'] = {}
         for pair in sortedKeys(splitOrders):
             order = splitOrders[pair]
-            nettedOrders['EUR'][pair] = splitOrders[pair]
+            order.account = "Split EUR"
+            nettedOrders['EUR'][pair] = order
 
     #net across accounts (assume EUR and USD for now)
     for pair in sortedKeys(nettedOrders['USD']):
@@ -144,10 +155,12 @@ def getTotals(accounts, split=False):
                 if (buyOrder.baseAmount >= sellOrder.baseAmount):
                     dealtCcy = sellOrder.term if sellOrder.base == buyOrder._base else sellOrder.base
                     buyOrder.net(dealtCcy, sellOrder)
+                    buyOrder.setSaving(sellOrder.getSaving())
                     sellOrder.setInternal()
                 else:
                     dealtCcy = buyOrder.term if buyOrder.base == sellOrder._base else buyOrder.base
                     sellOrder.net(dealtCcy, buyOrder)
+                    sellOrder.setSaving(buyOrder.getSaving())
                     buyOrder.setInternal()
             else:
                 order1.aggregate(order2)
@@ -166,13 +179,14 @@ if __name__ == "__main__":
     accounts.printAccountOrders()
     netOrders = getTotals(accounts, True)
 
-    print ""
+    print "\n Netted FX Orders:\n"
     totalSaved = 0
     for base in netOrders:
         for key in sortedKeys(netOrders[base]):
             order = netOrders[base][key]
-            if (not order.internal):print "%s (saving %8.2f USD)" % (order.__str__(), order.getSaving())
-            totalSaved += order.getSaving()
+            if (not order.internal):
+                print "%s (saving %8.2f USD)" % (order.__str__(), order.getSaving())
+                totalSaved += order.getSaving()
 
     print "\nTotal USD amount saved across the accounts (using individual trades) %.2f" % totalSaved
     #print "\nTotal USD amount saved across the accounts (using net account flow) %.2f" % (nettedCCYTotal2 - accountCCYTotal1)

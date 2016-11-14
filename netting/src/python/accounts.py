@@ -88,6 +88,7 @@ class Accounts:
 
     def printAccountTargets(self):
         header = self.__getHeader()
+        print "Account Targets: \n"
         print "-"*len(header)
         print header
         print "-"*len(header)
@@ -95,7 +96,7 @@ class Accounts:
         print "-"*len(header)
 
     def printAccountOrders(self):
-        print ""
+        print "\nIndividual FX Orders: \n"
         for order in self.getAccountOrders(): print order
 
     def __getHeader(self):

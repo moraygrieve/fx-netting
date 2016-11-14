@@ -49,6 +49,7 @@ def convertTo(ccy1, ccy2, amount):
 def printPrices():
     pairs = PRICES.keys()
     pairs.sort()
+    print "Prices: \n"
     for pair in pairs:
         if pair == "USDJPY":
             print "%s: %8.2f  %-8.2f" % (pair,PRICES[pair][0],PRICES[pair][1])

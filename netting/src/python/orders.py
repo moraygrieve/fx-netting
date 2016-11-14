@@ -213,11 +213,11 @@ class FXOrder:
 
 #entry point for some simple testing
 if __name__ == "__main__":
-    order = FXOrder.newSellOrder('A1','EUR','GBP')
-    order.setAmounts('GBP', 1000000)
+    order = FXOrder.newSellOrder('A1','EUR','CHF')
+    order.setAmounts('CHF', 1000000)
     print order
 
     split = CrossFXOrder(order)
-    split.split('USD','GBP')
+    split.split('USD','CHF')
     print split.left
     print split.right
