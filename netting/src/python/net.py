@@ -44,24 +44,6 @@ def sortedKeys(dict):
     keys.sort()
     return keys
 
-
-def doSplits(accounts):
-    splitOrders = {}
-    for name in accounts.getAccountNames():
-        account = accounts.getAccount(name)
-        splitOrders[account.getBase()] = []
-
-        for pair in sortedKeys(account.getOrders()):
-            order =  account.getOrders()[pair]
-            if account.getBase() == 'USD':
-                splitOrders[account.getBase()].append(order)
-            if account.getBase() == 'EUR' and pair != 'EURUSD':
-                cross = CrossFXOrder(order)
-                cross.split('USD')
-                splitOrders[account.getBase()].append(cross.left)
-                splitOrders[account.getBase()].append(cross.right)
-
-
 def getTotals(accounts, split=False):
     aggregatedOrders = {}
     nettedOrders = {}
@@ -125,10 +107,8 @@ def getTotals(accounts, split=False):
                     else:
                         if splitOrders[order.pair].baseAmount >= order.baseAmount:
                             splitOrders[order.pair].net('EUR', order)
-                            splitOrders[order.pair].setSaving(order.getSaving())
                         else:
                             order.net('EUR', splitOrders[order.pair])
-                            order.setSaving(splitOrders[order.pair].getSaving())
                             splitOrders[order.pair] = order
                 else:
                     splitOrders[order.pair] = order
@@ -155,16 +135,11 @@ def getTotals(accounts, split=False):
                 if (buyOrder.baseAmount >= sellOrder.baseAmount):
                     dealtCcy = sellOrder.term if sellOrder.base == buyOrder._base else sellOrder.base
                     buyOrder.net(dealtCcy, sellOrder)
-                    buyOrder.setSaving(sellOrder.getSaving())
-                    sellOrder.setInternal()
                 else:
                     dealtCcy = buyOrder.term if buyOrder.base == sellOrder._base else buyOrder.base
                     sellOrder.net(dealtCcy, buyOrder)
-                    sellOrder.setSaving(buyOrder.getSaving())
-                    buyOrder.setInternal()
             else:
                 order1.aggregate(order2)
-                order2.setInternal()
 
     return nettedOrders
 

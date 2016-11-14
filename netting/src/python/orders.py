@@ -171,6 +171,7 @@ class FXOrder:
         self.baseAmount += order.baseAmount
         self.termAmount += order.termAmount
         self.saving += order.saving
+        order.setInternal()
 
 
     def net(self, dealtCcy, order):
@@ -199,6 +200,10 @@ class FXOrder:
 
         if contraCcy != 'USD': self.setSaving(convertToMid('USD', contraCcy, saving))
         else: self.setSaving(saving)
+
+        #transfer any savings from the swallowed order, and mark as internal
+        self.setSaving(order.getSaving())
+        order.setInternal()
 
 
     def __str__(self):
