@@ -62,7 +62,6 @@ def doSplits(accounts):
 def getTotals(accounts):
     aggregatedOrders = {}
     nettedOrders = {}
-    shadowOrders = {}
 
     #aggregate orders within account of the same base (add buy and sell side)
     for ccy in accounts.currencies:
@@ -105,35 +104,29 @@ def getTotals(accounts):
     #net across accounts (assume EUR and USD for now)
     for pair in sortedKeys(nettedOrders['USD']):
         order1 = nettedOrders['USD'][pair]
+        order1._base = 'USD'
 
         if nettedOrders.has_key('EUR') and nettedOrders['EUR'].has_key(pair):
             order2 = nettedOrders['EUR'][pair]
+            order2._base = 'EUR'
 
             if order1.side != order2.side:
                 buyOrder = order1 if order1.isBuy() else order2
                 sellOrder = order2 if order1.isBuy() else order1
 
                 if (buyOrder.baseAmount >= sellOrder.baseAmount):
-                    buyOrder.net(sellOrder.term if sellOrder.base == base else sellOrder.base, sellOrder)
+                    dealtCcy = sellOrder.term if sellOrder.base == buyOrder._base else sellOrder.base
+                    buyOrder.net(dealtCcy, sellOrder)
                     sellOrder.setInternal()
-
-                    #shadow = FXOrder.newBuyOrder("Shadow", buyOrder.base, buyOrder.term)
-                    #dealtAmount = sellOrder.baseAmount if sellOrder.dealtCurrency != sellOrder.base else sellOrder.termAmount
-                    #shadow.setAmounts(dealtAmount, True)
-                    #shadow.setInternal()
                 else:
-                    sellOrder.net(buyOrder.term if buyOrder.base == base else buyOrder.base, buyOrder)
+                    dealtCcy = buyOrder.term if buyOrder.base == sellOrder._base else buyOrder.base
+                    sellOrder.net(dealtCcy, buyOrder)
                     buyOrder.setInternal()
+            else:
+                order1.aggregate(order2)
+                order2.setInternal()
 
-                    #shadow = FXOrder.newSellOrder("Shadow", sellOrder.base, sellOrder.term)
-                    #dealtAmount = buyOrder.baseAmount if buyOrder.dealtCurrency != buyOrder.base else buyOrder.termAmount
-                    #shadow.setAmounts(dealtAmount, True)
-                    #shadow.setInternal()
-
-                #if not shadowOrders.has_key(shadow.contraCurrency()): shadowOrders[shadow.contraCurrency()]={}
-                #shadowOrders[shadow.contraCurrency()][pair] = shadow
-
-        return nettedOrders,shadowOrders
+        return nettedOrders
 
 if __name__ == "__main__":
     total = 0
@@ -144,27 +137,7 @@ if __name__ == "__main__":
     printPrices()
     accounts.printAccountTargets()
     accounts.printAccountOrders()
-    netOrders, shadowOrders = getTotals(accounts)
-
-    if False:
-        accountCCYTotal1 = 0
-        for order in accounts.getAccountOrders():
-            contraCCy = order.contraCurrency()
-            contraAmount = order.contraAmount() if contraCCy=='USD' else convertToMid('USD', contraCCy, order.contraAmount())
-            accountCCYTotal1 += contraAmount
-
-        nettedCCYTotal2 = 0
-        for base in sortedKeys(netOrders):
-            for key in sortedKeys(netOrders[base]):
-                order = netOrders[base][key]
-                contraAmount = order.contraAmount() if base=='USD' else convertToMid('USD', base, order.contraAmount())
-                nettedCCYTotal2 += contraAmount
-
-        for base in sortedKeys(shadowOrders):
-            for key in sortedKeys(shadowOrders[base]):
-                order = shadowOrders[base][key]
-                contraAmount = order.contraAmount() if base=='USD' else convertToMid('USD', base, order.contraAmount())
-                nettedCCYTotal2 += contraAmount
+    netOrders = getTotals(accounts)
 
     print ""
     totalSaved = 0
