@@ -26,6 +26,7 @@ def getPrice(pair):
 
 def convertToMid(ccy1, ccy2, amount):
     #Convert to ccy1 from ccy2 amount using the mid price
+    if ccy1 == ccy2: return amount
     pair, base, term = marketConvention(ccy1, ccy2)
     bid, ask = getPrice(pair)
     if ccy1 == term:

@@ -1,3 +1,5 @@
+import math
+
 from convention import marketConvention
 from prices import getPrice, convertToMid
 
@@ -108,20 +110,22 @@ class FXOrder:
         self.baseAmount += order.baseAmount
         self.termAmount += order.termAmount
 
-    def net(self, ccy, order):
-        #netting order against this, where we save in opposite currency to ccy e.g. USD in GBPUSD
-        bid, ask = getPrice(self.pair)
-        if ccy == self.base:
-            self.setAmounts(self.base, self.baseAmount - order.baseAmount)
-            saving = order.baseAmount*ask - order.baseAmount*bid
-            if self.term != 'USD': convertToMid('USD', ccy, saving)
-            else: self.setSaving(saving)
-        else:
-            self.setAmounts(self.term, self.termAmount - order.termAmount)
-            saving = order.termAmount/bid - order.termAmount/ask
-            if self.base != 'USD':convertToMid('USD', ccy, saving)
-            else: self.setSaving(saving)
+    def net(self, dealtCcy, order):
+        #netting two orders of the same currency pair (self is the larger base amount)
+        contraCcy = self.term if self.base == dealtCcy else self.base
 
+        if dealtCcy == self.base:
+            contraAmount = self.termAmount
+            self.setAmounts(self.base, self.baseAmount - order.baseAmount)
+            saving = contraAmount - (self.termAmount + order.termAmount)
+        else:
+            contraAmount = self.baseAmount
+            self.setAmounts(self.term, self.termAmount - order.termAmount)
+            saving = contraAmount - (self.baseAmount + order.baseAmount)
+        saving = math.fabs(saving)
+
+        if contraCcy != 'USD': self.setSaving(convertToMid('USD', contraCcy, saving))
+        else: self.setSaving(saving)
 
     def __str__(self):
         internal = "*" if self.internal else ""

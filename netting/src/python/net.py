@@ -6,14 +6,14 @@ from prices import getPrice, printPrices, convertTo, convertToMid
 from convention import marketConvention
 
 #random.seed(4)  EUR cancel out completely
-#random.seed(120)
-random.seed(24)
+random.seed(120)
+#random.seed(24)
 
-ACCOUNTS = [('Account A','USD'),('Account B','USD'),('Account C','USD'),('Account D','USD')]
-CURRENCIES = ['AUD','CAD','CHF','CNH', 'EUR','GBP','HKD','JPY','NZD','PLN','USD']
+#ACCOUNTS = [('Account A','USD'),('Account B','USD'),('Account C','USD'),('Account D','USD')]
+#CURRENCIES = ['AUD','CAD','CHF','CNH', 'EUR','GBP','HKD','JPY','NZD','PLN','USD']
 
-#ACCOUNTS = [('Account A','USD'),('Account B','EUR'),('Account C','USD'),('Account D','USD'),('Account E','EUR')]
-#CURRENCIES = ['AUD','CAD','CHF','GBP','EUR','HKD','JPY','NZD','PLN','USD']
+ACCOUNTS = [('Account A','USD'),('Account B','EUR'),('Account C','USD'),('Account D','USD'),('Account E','EUR')]
+CURRENCIES = ['AUD','CAD','CHF','GBP','EUR','HKD','JPY','NZD','PLN','USD']
 
 
 def initAccounts():
@@ -114,35 +114,26 @@ def getTotals(accounts):
                 sellOrder = order2 if order1.isBuy() else order1
 
                 if (buyOrder.baseAmount >= sellOrder.baseAmount):
-                    order = copy.deepcopy(buyOrder)
-                    order.net(sellOrder.term if sellOrder.base == base else sellOrder.base, sellOrder)
-                else:
-                    order = copy.deepcopy(sellOrder)
-                    order.net(buyOrder.term if buyOrder.base == base else buyOrder.base, buyOrder)
-
-
-
-                if (buyOrder.baseAmount >= sellOrder.baseAmount):
-                    buyOrder.net(sellOrder)
+                    buyOrder.net(sellOrder.term if sellOrder.base == base else sellOrder.base, sellOrder)
                     sellOrder.setInternal()
 
-                    shadow = FXOrder.newBuyOrder("Shadow", buyOrder.base, buyOrder.term, buyOrder.dealtCurrency)
-                    dealtAmount = sellOrder.baseAmount if sellOrder.dealtCurrency != sellOrder.base else sellOrder.termAmount
-                    shadow.setAmounts(dealtAmount, True)
-                    shadow.setInternal()
+                    #shadow = FXOrder.newBuyOrder("Shadow", buyOrder.base, buyOrder.term)
+                    #dealtAmount = sellOrder.baseAmount if sellOrder.dealtCurrency != sellOrder.base else sellOrder.termAmount
+                    #shadow.setAmounts(dealtAmount, True)
+                    #shadow.setInternal()
                 else:
-                    sellOrder.net(buyOrder)
+                    sellOrder.net(buyOrder.term if buyOrder.base == base else buyOrder.base, buyOrder)
                     buyOrder.setInternal()
 
-                    shadow = FXOrder.newSellOrder("Shadow", sellOrder.base, sellOrder.term, sellOrder.dealtCurrency)
-                    dealtAmount = buyOrder.baseAmount if buyOrder.dealtCurrency != buyOrder.base else buyOrder.termAmount
-                    shadow.setAmounts(dealtAmount, True)
-                    shadow.setInternal()
+                    #shadow = FXOrder.newSellOrder("Shadow", sellOrder.base, sellOrder.term)
+                    #dealtAmount = buyOrder.baseAmount if buyOrder.dealtCurrency != buyOrder.base else buyOrder.termAmount
+                    #shadow.setAmounts(dealtAmount, True)
+                    #shadow.setInternal()
 
-                if not shadowOrders.has_key(shadow.contraCurrency()): shadowOrders[shadow.contraCurrency()]={}
-                shadowOrders[shadow.contraCurrency()][pair] = shadow
+                #if not shadowOrders.has_key(shadow.contraCurrency()): shadowOrders[shadow.contraCurrency()]={}
+                #shadowOrders[shadow.contraCurrency()][pair] = shadow
 
-    return nettedOrders,shadowOrders
+        return nettedOrders,shadowOrders
 
 if __name__ == "__main__":
     total = 0
