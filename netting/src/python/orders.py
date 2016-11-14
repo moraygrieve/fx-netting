@@ -17,15 +17,19 @@ class CrossFXOrder:
         self.right = None
 
 
-    def split(self, splitCcy, primaryCcy):
+    def split(self, splitCcy, dealtCcy):
         """Split the order into it's two constituent legs.
 
         @param splitCcy: The currency used in the split
-        @param primaryCcy: The currency whose amount must stay the same (i.e. the dealt currency)
+        @param dealtCcy: The currency whose amount must stay the same (i.e. the dealt currency)
         """
         pair1, base1, term1 = marketConvention(self.order.base, splitCcy)
         pair2, base2, term2 = marketConvention(self.order.term, splitCcy)
 
+        #the non dealt currency
+        contraCcy = self.order.term if self.order.base == dealtCcy else self.order.base
+
+        #determine the left an right order directions
         if self.order.isBuy():
             if self.order.base == base1: leftOp = FXOrder.newBuyOrder
             else: leftOp  = FXOrder.newSellOrder
@@ -43,12 +47,25 @@ class CrossFXOrder:
         self.left.account += "-SL"
         self.right.account += "-SR"
 
-        if (primaryCcy == self.order.base):
+        #set the amount for the side with the deal currency, then set the other
+        if (dealtCcy == self.order.base):
             self.left.setAmounts(self.order.base, self.order.baseAmount)
             self.right.setAmounts(splitCcy, self.left.baseAmount if self.left.base == splitCcy else self.left.termAmount)
         else:
             self.right.setAmounts(self.order.term, self.order.termAmount)
             self.left.setAmounts(splitCcy, self.right.baseAmount if self.right.base == splitCcy else self.right.termAmount)
+
+        #the cost is the difference between the original contra currency, and the final contra currency
+        origSplitCcyAmount = self.order.termAmount if self.order.base == dealtCcy else self.order.baseAmount
+        if (contraCcy in pair1):
+            finalSplitCcyAmount = self.left.baseAmount if self.left.base == contraCcy else self.left.termAmount
+        else:
+            finalSplitCcyAmount = self.right.baseAmount if self.right.base == contraCcy else self.right.termAmount
+
+        cost = origSplitCcyAmount - finalSplitCcyAmount
+        if (contraCcy == self.order.base and not self.order.isBuy()) or (contraCcy == self.order.term and self.order.isBuy()): cost *= -1.0
+        self.left.setSaving((self.order.getSaving() - cost)/2.0)
+        self.right.setSaving((self.order.getSaving() - cost)/2.0)
 
 
 class FXOrder:
@@ -153,6 +170,7 @@ class FXOrder:
         self.price = order.price
         self.baseAmount += order.baseAmount
         self.termAmount += order.termAmount
+        self.saving += order.saving
 
 
     def net(self, dealtCcy, order):

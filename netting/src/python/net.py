@@ -59,9 +59,10 @@ def doSplits(accounts):
                 splitOrders[account.getBase()].append(cross.right)
 
 
-def getTotals(accounts):
+def getTotals(accounts, split=False):
     aggregatedOrders = {}
     nettedOrders = {}
+    splitOrders = {}
 
     #aggregate orders within account of the same base (add buy and sell side)
     for ccy in accounts.currencies:
@@ -101,6 +102,32 @@ def getTotals(accounts):
 
             nettedOrders[base][pair] = order
 
+    #split the EUR orders
+    if split:
+        for pair in sortedKeys(nettedOrders['EUR']):
+            nettedOrder = nettedOrders['EUR'][pair]
+            if nettedOrder.pair == 'EURUSD':
+                if not splitOrders.has_key(nettedOrder.pair):
+                    splitOrders['EURUSD'] = copy.deepcopy(nettedOrder)
+                continue
+
+            cross = CrossFXOrder(nettedOrder)
+            cross.split('USD', nettedOrder.base if nettedOrder.base!='EUR' else nettedOrder.term)
+
+            for order in [cross.left, cross.right]:
+                if splitOrders.has_key(order.pair):
+                    if (splitOrders[order.pair].side == order.side):
+                        splitOrders[order.pair].aggregate(order)
+                    else:
+                        splitOrders[order.pair].net('EUR', order)
+                else:
+                    splitOrders[order.pair] = order
+
+        nettedOrders['EUR'] = {}
+        for pair in sortedKeys(splitOrders):
+            order = splitOrders[pair]
+            nettedOrders['EUR'][pair] = splitOrders[pair]
+
     #net across accounts (assume EUR and USD for now)
     for pair in sortedKeys(nettedOrders['USD']):
         order1 = nettedOrders['USD'][pair]
@@ -137,7 +164,7 @@ if __name__ == "__main__":
     printPrices()
     accounts.printAccountTargets()
     accounts.printAccountOrders()
-    netOrders = getTotals(accounts)
+    netOrders = getTotals(accounts, True)
 
     print ""
     totalSaved = 0
