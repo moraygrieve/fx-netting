@@ -10,15 +10,22 @@ class Side:
 
 class CrossFXOrder:
     def __init__(self, order):
+        """Construct this cross using the supplied order as the order to be split.
+        """
         self.order = order
         self.left = None
         self.right = None
 
+
     def split(self, splitCcy, primaryCcy):
+        """Split the order into it's two constituent legs.
+
+        @param splitCcy: The currency used in the split
+        @param primaryCcy: The currency whose amount must stay the same (i.e. the dealt currency)
+        """
         pair1, base1, term1 = marketConvention(self.order.base, splitCcy)
         pair2, base2, term2 = marketConvention(self.order.term, splitCcy)
 
-        #create the initial orders
         if self.order.isBuy():
             if self.order.base == base1: leftOp = FXOrder.newBuyOrder
             else: leftOp  = FXOrder.newSellOrder
@@ -36,7 +43,6 @@ class CrossFXOrder:
         self.left.account += "-SL"
         self.right.account += "-SR"
 
-        #set the amounts (primaryCcy is the one kept constant)
         if (primaryCcy == self.order.base):
             self.left.setAmounts(self.order.base, self.order.baseAmount)
             self.right.setAmounts(splitCcy, self.left.baseAmount if self.left.base == splitCcy else self.left.termAmount)
