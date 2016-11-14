@@ -126,7 +126,7 @@ def getTotals(accounts):
                 order1.aggregate(order2)
                 order2.setInternal()
 
-        return nettedOrders
+    return nettedOrders
 
 if __name__ == "__main__":
     total = 0
