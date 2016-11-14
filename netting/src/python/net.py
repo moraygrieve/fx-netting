@@ -150,7 +150,7 @@ if __name__ == "__main__":
         accountCCYTotal1 = 0
         for order in accounts.getAccountOrders():
             contraCCy = order.contraCurrency()
-            contraAmount = order.contraAmount() if contraCCy=='USD' else convertToMid('USD',contraCCy, order.contraAmount())
+            contraAmount = order.contraAmount() if contraCCy=='USD' else convertToMid('USD', contraCCy, order.contraAmount())
             accountCCYTotal1 += contraAmount
 
         nettedCCYTotal2 = 0
