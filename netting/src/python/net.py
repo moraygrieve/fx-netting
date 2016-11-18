@@ -1,43 +1,20 @@
 import random, math, copy
 
-from orders import FXOrder, CrossFXOrder, Side
+from orders import FXOrder, CrossFXOrder
 from accounts import Accounts
-from prices import getPrice, printPrices, convertTo, convertToMid
+from prices import printPrices
 from convention import marketConvention
 
 #random.seed(4)  EUR cancel out completely
 #random.seed(24)
-
 #random.seed(124)
 random.seed(120)
-
 
 #ACCOUNTS = [('Account A','USD'),('Account B','USD'),('Account C','USD'),('Account D','USD')]
 #CURRENCIES = ['AUD','CAD','CHF','CNH', 'EUR','GBP','HKD','JPY','NZD','PLN','USD']
 
 ACCOUNTS = [('Account A','USD'),('Account B','EUR'),('Account C','USD'),('Account D','USD'),('Account E','EUR')]
 CURRENCIES = ['AUD','CAD','CHF','GBP','EUR','HKD','JPY','NZD','PLN','USD']
-
-
-def initAccounts():
-    accounts = Accounts(CURRENCIES)
-    for accountName, accountCcy in ACCOUNTS: accounts.addAccount(accountName, accountCcy)
-
-    for ccy in CURRENCIES:
-        for accountName, accountCcy in ACCOUNTS:
-            if ccy == accountCcy: continue
-            r = random.randint(-5,5)
-            if (r > 2): target_amount = roundup(convertToMid(ccy, accountCcy, 1000000*random.randint(1,10)))
-            elif (r < -2): target_amount = roundup(convertToMid(ccy, accountCcy, -1000000*random.randint(1,10)))
-            else: continue
-            if target_amount == 0: continue
-
-            account_base_amount = convertTo(accountCcy, ccy, target_amount)
-            accounts.addAccountTarget(accountName, ccy, target_amount, account_base_amount)
-    return accounts
-
-def roundup(amount):
-    return int(math.ceil(amount/1000000.0)) * 1000000
 
 def sortedKeys(dict):
     keys = dict.keys()
@@ -69,23 +46,23 @@ def getTotals(accounts, split=False):
                 else: aggregatedOrders[account.getBase()][pair][1].aggregate(order)
 
     #net aggregates within accounts of the same base (add the buy and sell)
-    for base in sortedKeys(aggregatedOrders):
-        nettedOrders[base] = {}
+    for accountCcy in sortedKeys(aggregatedOrders):
+        nettedOrders[accountCcy] = {}
 
-        for pair in sortedKeys(aggregatedOrders[base]):
-            buyOrder = aggregatedOrders[base][pair][0]
-            sellOrder = aggregatedOrders[base][pair][1]
+        for pair in sortedKeys(aggregatedOrders[accountCcy]):
+            buyOrder = aggregatedOrders[accountCcy][pair][0]
+            sellOrder = aggregatedOrders[accountCcy][pair][1]
 
             if (buyOrder.baseAmount >= sellOrder.baseAmount):
                 order = copy.deepcopy(buyOrder)
                 order.account = "Netted"
-                order.net(order.base if base == order.term else order.term, sellOrder)
+                order.net(order.base if accountCcy == order.term else order.term, sellOrder)
             else:
                 order = copy.deepcopy(sellOrder)
                 order.account = "Netted"
-                order.net(order.base if base == order.term else order.term, buyOrder)
+                order.net(order.base if accountCcy == order.term else order.term, buyOrder)
 
-            nettedOrders[base][pair] = order
+            nettedOrders[accountCcy][pair] = order
 
     #split the EUR orders
     if split and nettedOrders.has_key('EUR'):
@@ -148,13 +125,15 @@ if __name__ == "__main__":
     count = 0
     totals = []
 
-    accounts = initAccounts()
     printPrices()
+    accounts = Accounts(CURRENCIES)
+    accounts.initAccounts(ACCOUNTS)
     accounts.printAccountTargets()
     accounts.printAccountOrders()
+
     netOrders = getTotals(accounts, True)
 
-    print "\n Netted FX Orders:\n"
+    print "\nNetted FX Orders:\n"
     totalSaved = 0
     for base in netOrders:
         for key in sortedKeys(netOrders[base]):
