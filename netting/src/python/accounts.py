@@ -22,6 +22,11 @@ class Account:
     def getTarget(self, ccy):
         return self.targets[ccy] if self.targets.has_key(ccy) else (0,0)
 
+    def getBaseTotal(self):
+        total = 0
+        for ccy in self.targets.keys(): total += self.targets[ccy][1]
+        return total
+
     def getOrders(self):
         return self.orders
 
@@ -150,6 +155,8 @@ class Accounts:
         print "-"*len(header)
         for ccy in self.currencies: print self.__getRow(ccy)
         print "-"*len(header)
+        print self.__getBaseTotals()
+        print "-"*len(header)
 
 
     def printAccountOrders(self):
@@ -164,18 +171,36 @@ class Accounts:
 
 
     def __getHeader(self):
-        header = "| %-5s" % "CCY"
-        for name in self.getAccountNames(): header = header + "| %12s (%s)" % (name, self.accounts[name].base)
+        header = "| %-5s " % "CCY"
+        for name in self.getAccountNames(): header = header + "| %12s      (%s)" % (name, self.accounts[name].base)
         return header+"|"
 
 
     def __getRow(self, ccy):
-        row = "| %-5s" % ccy
+        row = "| %-5s " % ccy
         for names in self.getAccountNames():
-            row = row + "|%+19s" % self.__formatRowEntry(self.accounts[names].getTarget(ccy)[0])
+            entry = self.accounts[names].getTarget(ccy)
+            row = row + "|%+12s%+12s" % (self.__formatRowEntry(entry[0]), self.__formatRowEntry(entry[1]))
         return row+"|"
 
 
     def __formatRowEntry(self, value):
         if (value == 0): return "%12s"%"0"
-        return ("%12d"%value)
+        return ("%10d"%value)
+
+    def __getBaseTotals(self):
+        row = "| TOTAL "
+        for names in self.getAccountNames():
+            row = row + "|%+12s%+12s" % ("", self.__formatRowEntry(self.accounts[names].getBaseTotal()))
+        return row+"|"
+
+
+
+if __name__ == "__main__":
+    a = [('Account A','USD'),('Account B','EUR'),('Account C','USD'),('Account D','USD'),('Account E','EUR')]
+    c = ['AUD','CAD','CHF','GBP','EUR','HKD','JPY','NZD','PLN','USD']
+
+    accounts = Accounts(c)
+    accounts.initAccounts(a)
+    accounts.printAccountTargets()
+
