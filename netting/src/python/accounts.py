@@ -22,6 +22,9 @@ class Account:
     def getTarget(self, ccy):
         return self.targets[ccy] if self.targets.has_key(ccy) else (0,0)
 
+    def getOrder(self, pair):
+        return self.orders[pair] if self.orders.has_key(pair) else None
+
     def getBaseTotal(self):
         total = 0
         for ccy in self.targets.keys(): total += self.targets[ccy][1]
@@ -145,38 +148,67 @@ class Accounts:
         return orders
 
 
+    def getAccountOrderPairs(self):
+        """Return a list of the pairs as the set across all orders.
+
+        @return: A sorted list of the pairs set.
+        """
+        pairs = {}
+        for name in self.getAccountNames():
+            accountOrders = self.accounts[name].getOrders()
+            for ccy in accountOrders.keys(): pairs[ccy]=True
+        allPairs = pairs.keys()
+        allPairs.sort()
+        return allPairs
+
+
     def printAccountTargets(self):
         """Print out the account details.
         """
-        header = self.__getHeader()
-        print "Account Targets: \n"
+        header = self.__getTargetHeader()
+        print "Account targets:"
         print "-"*len(header)
         print header
         print "-"*len(header)
-        for ccy in self.currencies: print self.__getRow(ccy)
+        for ccy in self.currencies: print self.__getTargetRow(ccy)
         print "-"*len(header)
-        print self.__getBaseTotals()
+        print self.__getTargetBaseTotals()
         print "-"*len(header)
 
 
-    def printAccountOrders(self):
+    def printAccountOrders(self, table=False):
         """Print out the account orders.
         """
-        print "\nIndividual FX Orders: \n"
-        for order in self.getAccountOrders(): print order
-
+        if not table:
+            print "\nIndividual FX orders: \n"
+            for order in self.getAccountOrders(): print order
+        else:
+            print "\nAccount orders by pair:"
+            header = self.__getOrdersHeader()
+            print "-"*len(header)
+            print header
+            print "-"*len(header)
+            for pair in self.getAccountOrderPairs(): print self.__getOrderRow(pair)
+            print "-"*len(header)
 
     def __roundup(self, amount):
         return int(math.ceil(amount/1000000.0)) * 1000000
 
 
-    def __getHeader(self):
+    def __getTargetHeader(self):
         header = "| %-5s " % "CCY"
         for name in self.getAccountNames(): header = header + "| %12s      (%s)" % (name, self.accounts[name].base)
         return header+"|"
 
 
-    def __getRow(self, ccy):
+    def __getOrdersHeader(self):
+        header = "| %-8s " % "Pair"
+        for name in self.getAccountNames(): header += "| %12s  " % (name)
+        header += "| %12s  " % "Totals"
+        return header+"|"
+
+
+    def __getTargetRow(self, ccy):
         row = "| %-5s " % ccy
         for names in self.getAccountNames():
             entry = self.accounts[names].getTarget(ccy)
@@ -184,11 +216,23 @@ class Accounts:
         return row+"|"
 
 
+    def __getOrderRow(self, pair):
+        row = "| %-8s " % pair
+        total = 0
+        for names in self.getAccountNames():
+            order = self.accounts[names].getOrder(pair)
+            amount = 0 if order is None else order.baseAmount * (1.0 if order.isBuy() else -1.0)
+            row = row + "|%+15s" % (self.__formatRowEntry(amount))
+            total += amount
+        row = row + "|%+15s" % (self.__formatRowEntry(total))
+        return row+"|"
+
     def __formatRowEntry(self, value):
         if (value == 0): return "%12s"%"0"
         return ("%10d"%value)
 
-    def __getBaseTotals(self):
+
+    def __getTargetBaseTotals(self):
         row = "| TOTAL "
         for names in self.getAccountNames():
             row = row + "|%+12s%+12s" % ("", self.__formatRowEntry(self.accounts[names].getBaseTotal()))
@@ -203,4 +247,5 @@ if __name__ == "__main__":
     accounts = Accounts(c)
     accounts.initAccounts(a)
     accounts.printAccountTargets()
+    accounts.printAccountOrders(table=True)
 

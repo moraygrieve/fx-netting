@@ -129,18 +129,22 @@ if __name__ == "__main__":
     accounts = Accounts(CURRENCIES)
     accounts.initAccounts(ACCOUNTS)
     accounts.printAccountTargets()
-    accounts.printAccountOrders()
+    accounts.printAccountOrders(table=True)
 
-    netOrders = getTotals(accounts, True)
+    netOrders = getTotals(accounts, False)
 
     print "\nNetted FX Orders:\n"
-    totalSaved = 0
+    sortedOrders = {}
     for base in netOrders:
         for key in sortedKeys(netOrders[base]):
-            order = netOrders[base][key]
-            if (not order.internal):
-                print "%s (saving %8.2f USD)" % (order.__str__(), order.getSaving())
-                totalSaved += order.getSaving()
+            sortedOrders[key] = netOrders[base][key]
+
+    totalSaved = 0
+    for pair in sortedKeys(sortedOrders):
+        order = sortedOrders[pair]
+        if (not order.internal):
+            print "%s (saving %8.2f USD)" % (order.__str__(), order.getSaving())
+            totalSaved += order.getSaving()
 
     print "\nTotal USD amount saved across the accounts (using individual trades) %.2f" % totalSaved
     #print "\nTotal USD amount saved across the accounts (using net account flow) %.2f" % (nettedCCYTotal2 - accountCCYTotal1)
