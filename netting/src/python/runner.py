@@ -9,24 +9,24 @@ CURRENCIES = ['AUD','CAD','CHF','GBP','EUR','HKD','JPY','NZD','PLN','USD']
 
 if __name__ == "__main__":
     values = []
-    total = 0
     count = 0
-    totalFlow = 0
+    totalSpread = 0
+    totalSaving = 0
     for i in range(0,10000):
         accounts = Accounts(CURRENCIES)
         accounts.initAccounts(ACCOUNTS)
-        flow = accounts.getAccountUSDFlow()
-        totalFlow += flow
+        spread = accounts.getSpreadCost()
+        totalSpread += spread
 
         netter = Netter(accounts, True)
         saved, netOrders = netter.net()
         if (saved > 0 ):
-            values.append((saved/flow)*100.0)
-            total += saved
+            values.append((saved/spread)*100.0)
+            totalSaving += saved
             count += 1
 
-    print "Average saving is %5.2f on a flow of %5.2f" % (total/count, totalFlow/count)
-    print "Average percent saving is "
+    print "Average saving is %5.2f on a flow of %5.2f" % (totalSaving/count, totalSpread/count)
+    print "Average percent saving is %5.2f" % (totalSaving / totalSpread)
     values.sort()
     hist, bin_edges = numpy.histogram(values, 100)
     for i in range(0, len(hist)):

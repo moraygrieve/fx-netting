@@ -40,6 +40,7 @@ class Account:
         order.account = self.name
         order.base = base
         order.term = term
+        order.pair = pair
         order.dealtCurrency = ccy
         order.dealtAmount = math.fabs(ccyAmount)
         if ccy == base:
@@ -173,6 +174,18 @@ class Accounts:
         return total
 
 
+    def getSpreadCost(self):
+        """Return the dollar cost of executing the spread.
+
+        @return: The USD cost
+        """
+        total=0
+        for order in self.getAccountOrders():
+            bid, ask = getPrice(order.pair)
+            total += math.fabs(convertToMid('USD', order.term, (ask-bid)*order.baseAmount))
+        return total
+
+
     def printAccountTargets(self):
         """Print out the account details.
         """
@@ -201,6 +214,8 @@ class Accounts:
             print "-"*len(header)
             for pair in self.getAccountOrderPairs(): print self.__getOrderRow(pair)
             print "-"*len(header)
+        print "Spread cost = %5.2f USD" % (self.getSpreadCost())
+
 
     def __roundup(self, amount):
         return int(math.ceil(amount/1000000.0)) * 1000000
@@ -237,6 +252,7 @@ class Accounts:
             total += amount
         row = row + "|%+15s" % (self.__formatRowEntry(total))
         return row+"|"
+
 
     def __formatRowEntry(self, value):
         if (value == 0): return "%12s"%"0"
