@@ -6,34 +6,77 @@ from orders import FXOrder, Side
 
 class Account:
     def __init__(self, name, base):
+        """Construct an account instance, with given name and base currency.
+
+        @param name: The name of the account
+        @param base: The base currency i.e. the account is USD based
+        """
         self.name = name
         self.base = base
         self.targets = {}
         self.orders = {}
 
+
     def addTarget(self, ccy, ccyAmount, baseAmount):
+        """Add a target currency for the account.
+
+        @param ccy: The target currency
+        @param ccyAmount: The target currency amount
+        @param baseAmount: The equivalent base currency amount
+        """
         self.targets[ccy] = (ccyAmount, baseAmount)
         self.addOrder(ccy, ccyAmount, baseAmount)
 
-    def getName(self): return self.name
 
-    def getBase(self): return self.base
+    def getName(self):
+        """Return the name of the account.
+        """
+        return self.name
+
+
+    def getBase(self):
+        """Return the base currency of the account.
+        """
+        return self.base
+
 
     def getTarget(self, ccy):
+        """Return the target amount of a given currency, or zero if none exists
+
+        @param ccy: The target currency.
+        """
         return self.targets[ccy] if self.targets.has_key(ccy) else (0,0)
 
+
     def getOrder(self, pair):
+        """Return an order for a given currency pair, used to achieve a currency target.
+
+        @param pair: The currency pair
+        """
         return self.orders[pair] if self.orders.has_key(pair) else None
 
+
     def getBaseTotal(self):
+        """Return the total net flow in the base currency to meet the targets.
+        """
         total = 0
         for ccy in self.targets.keys(): total += self.targets[ccy][1]
         return total
 
+
     def getOrders(self):
+        """Return all orders for this account.
+        """
         return self.orders
 
+
     def addOrder(self, ccy, ccyAmount, baseAmount):
+        """Add an order to meet a given currency target.
+
+        @param ccy: The target currency
+        @param ccyAmount: The target currency amount
+        @param baseAmount: The account currency amount
+        """
         pair, base, term = marketConvention(ccy, self.base)
         bid, ask = getPrice(pair)
         order = FXOrder()
@@ -41,8 +84,6 @@ class Account:
         order.base = base
         order.term = term
         order.pair = pair
-        order.dealtCurrency = ccy
-        order.dealtAmount = math.fabs(ccyAmount)
         if ccy == base:
             if ccyAmount > 0:
                 order.price = ask

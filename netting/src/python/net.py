@@ -138,7 +138,7 @@ if __name__ == "__main__":
     accounts.initAccounts(ACCOUNTS)
     accounts.printAccountTargets()
     accounts.printAccountOrders(table=True)
-    flow = accounts.getAccountUSDFlow()
+    spreadCost = accounts.getSpreadCost()
 
     netter = Netter(accounts, True)
     saved, netOrders = netter.net()
@@ -149,6 +149,6 @@ if __name__ == "__main__":
         print "%s (saving %8.2f USD)" % (order.__str__(), order.getSaving())
 
     print "\nTotal USD amount saved across the accounts (using individual trades) %.2f" % saved
-    print "With a total flow of %d, this equates to %5.5f percentage " % (flow, (saved/flow)*100.0)
+    print "This equates to %5.2f percent cost on the spread " % ((saved/spreadCost)*100.0)
 
 
