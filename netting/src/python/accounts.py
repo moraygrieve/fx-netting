@@ -162,6 +162,17 @@ class Accounts:
         return allPairs
 
 
+    def getAccountUSDFlow(self):
+        """Return the absolute sum of the USD flow into and out of the accounts.
+
+        @return: The USD gross flow into/out of the accounts
+        """
+        total=0
+        for names in self.getAccountNames():
+            total += math.fabs(self.accounts[names].getBaseTotal())
+        return total
+
+
     def printAccountTargets(self):
         """Print out the account details.
         """
