@@ -28,8 +28,8 @@ if __name__ == "__main__":
     print "Average saving is %5.2f on a flow of %5.2f" % (totalSaving/count, totalSpread/count)
     print "Average percent saving is %5.2f" % (totalSaving / totalSpread)
     values.sort()
-    hist, bin_edges = numpy.histogram(values, 100)
+    hist, bin_edges = numpy.histogram(values, 40)
     for i in range(0, len(hist)):
-        print "%5.5f %d" % (bin_edges[i], hist[i])
+        print "%5.2f %d" % (bin_edges[i], hist[i])
 
 
