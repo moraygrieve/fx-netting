@@ -62,7 +62,7 @@ class CrossFXOrder:
         else:
             finalSplitCcyAmount = self.right.baseAmount if self.right.base == contraCcy else self.right.termAmount
 
-        cost = origSplitCcyAmount - finalSplitCcyAmount
+        cost = convertToMid('USD', contraCcy, (origSplitCcyAmount - finalSplitCcyAmount))
         if (contraCcy == self.order.base and not self.order.isBuy()) or (contraCcy == self.order.term and self.order.isBuy()): cost *= -1.0
         self.left.setSaving((self.order.getSaving() - cost)/2.0)
         self.right.setSaving((self.order.getSaving() - cost)/2.0)
@@ -139,7 +139,7 @@ class FXOrder:
 
 
     def setSaving(self, saving):
-        """Add a saving to the total saving on this order.
+        """Add a saving to the total saving on this order (given in USD).
         """
         self.saving += saving
 
@@ -198,8 +198,7 @@ class FXOrder:
             saving = contraAmount - (self.baseAmount + order.baseAmount)
         saving = math.fabs(saving)
 
-        if contraCcy != 'USD': self.setSaving(convertToMid('USD', contraCcy, saving))
-        else: self.setSaving(saving)
+        self.setSaving(convertToMid('USD', contraCcy, saving))
 
         #transfer any savings from the swallowed order, and mark as internal
         self.setSaving(order.getSaving())
